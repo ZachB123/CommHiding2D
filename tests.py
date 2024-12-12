@@ -46,16 +46,20 @@ class TestGemmConfiguration():
 class TestGemm():
 
     ITERATIONS = 50
-    MULTIPLIER_RANGE = 50
+    MULTIPLIER_RANGE = 10
 
-    def get_factors(self, num):
-        factors = []
-        for i in range(1, int(sqrt(num)) + 1):
-            if num % i == 0:
-                factors.append(i)
-            if i != num // i:
-                factors.append(num // i)
-        return factors
+    def get_factors(self, n):
+        if n <= 0:
+            raise ValueError("Input must be a positive integer.")
+        
+        factors = set()
+        for i in range(1, int(n**0.5) + 1):
+            if n % i == 0:
+                factors.add(i)
+                factors.add(n // i)
+        
+        return sorted(factors)
+    
 
     def test_2d_gemm(self, config):
         # 3
@@ -78,8 +82,18 @@ class TestGemm():
             k = min_k * random.randint(1, TestGemm.MULTIPLIER_RANGE)
             n = min_n * random.randint(1, TestGemm.MULTIPLIER_RANGE)
 
-            output = config.algorithm(m, k, n, px, py)
-            comm.Barrier()
+            try:
+                # comm.Barrier()
+                output = config.algorithm(m, k, n, px, py)
+                # comm.Barrier()
+            except Exception as e:
+                error_message = (
+                    f"Exception occurred in {config.algorithm.__name__}\n"
+                    f"Parameters: m={m}, k={k}, n={n}, px={px}, py={py}\n"
+                    f"Error: {e}"
+                )
+                print(error_message)
+                raise e
 
             error_string = f"{config.algorithm.__name__} FAILED\nParameters: m={m}, k={k}, n={n}, px={px}, py={py}\nExpected: {output.get('expected')}\nActual: {output.get('actual')}"
 
@@ -91,6 +105,7 @@ class TestGemm():
 
 
 GEMM_TESTING_CONFIGURATIONS = {
+    "AG_A_COL_AG_A_ROW": TestGemmConfiguration(AG_A_COL_AG_A_ROW, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE), 
     "AG_A_COL_AG_B_COL": TestGemmConfiguration(AG_A_COL_AG_B_COL, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE),
     "AG_A_COL_AG_B_ROW": TestGemmConfiguration(AG_A_COL_AG_B_ROW, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY)
 }

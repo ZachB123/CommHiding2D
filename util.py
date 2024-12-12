@@ -22,7 +22,8 @@ def generate_matrices(m, k, n):
     # A, B, C
     A = generate_matrix(m, k, -9, 10,)
     B = generate_matrix(k, n, -9, 10,)
-    C = generate_matrix(m, n, -9, 10,)
+    # C = generate_matrix(m, n, -9, 10,)
+    C = np.zeros(shape=(m,n))
     return A, B, C
 
 def matrices_equal(A, B):

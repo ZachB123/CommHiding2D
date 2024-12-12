@@ -1,7 +1,7 @@
 from mpi4py import MPI
 
 
-DEBUG_RANK = 4
+DEBUG_RANK = 0
 
 def parallel_print(message, flush=True):
     """
