@@ -112,7 +112,8 @@ GEMM_TESTING_CONFIGURATIONS = {
     "AG_A_ROW_AG_B_ROW": TestGemmConfiguration(AG_A_ROW_AG_B_ROW, MinGemmDimension.SIZE, MinGemmDimension.PX, MinGemmDimension.PY),
     # 8
     "AG_A_ROW_RS_C_COL": TestGemmConfiguration(AG_A_ROW_RS_C_COL, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE),
-
+    # 10
+    "AG_B_COL_AG_B_ROW": TestGemmConfiguration(AG_B_COL_AG_B_ROW, MinGemmDimension.SIZE, MinGemmDimension.PX, MinGemmDimension.PY),
 }
 
 def main():
