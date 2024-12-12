@@ -57,7 +57,10 @@ def pure_column_distribution(matrix, size, rank):
 def pure_column_distribution_get_local_indices(rank):
     return (0, rank)
 
-def pure_row_distribution(rank):
+def pure_row_distribution(matrix, size, rank):
+    return get_subtile(matrix, size, 1 , rank, 0)
+
+def pure_row_distribution_get_local_indices(rank):
     return (rank, 0)
 
 def block_cyclic_distribution(matrix, px, py, row_index, start_col_index):

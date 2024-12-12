@@ -4,7 +4,7 @@ import numpy as np
 from communicator import nearby_rank_communicator, remainder_communicator
 from constants import MPI_DTYPE
 from debug import parallel_print, print_full_matrices, print_local_matrices, print_local_matrices_on_debug_rank, print_ranks, rank_print
-from distribution import block_cyclic_distribution, col_major_distribution, col_major_distribution_get_local_indices, get_subtile, get_subtile_shape, pure_column_distribution, pure_column_distribution_get_local_indices, row_major_distribution, row_major_distribution_get_local_indices, set_subtile
+from distribution import block_cyclic_distribution, col_major_distribution, col_major_distribution_get_local_indices, get_subtile, get_subtile_shape, pure_column_distribution, pure_column_distribution_get_local_indices, pure_row_distribution, row_major_distribution, row_major_distribution_get_local_indices, set_subtile
 from util import DoubleBuffer, assemble_matrix_from_tiles, generate_matrices, matrices_equal
 
 """
@@ -45,6 +45,7 @@ def AG_A_COL_AG_A_ROW(m, k, n, px, py):
     A_comm2 = nearby_rank_communicator(comm, py, rank)
 
     A, B, C = generate_matrices(m, k ,n)
+    expected = np.matmul(A, B) + C    
 
     A_local = row_major_distribution(A, px, py, rank)
     B_local = pure_column_distribution(B, size, rank)
@@ -100,7 +101,7 @@ def AG_A_COL_AG_A_ROW(m, k, n, px, py):
                 elif i != outer_loop_iterations - 1:
                     MPI.Request.Waitall([outer_send_request, outer_receive_request])
                     buffer.swap()
-                    
+
                 # WHAT IS THIS IF STATEMENT
                 if j != inner_loop_iterations - 1:
                     B_index = (B_index + 1) % py
@@ -116,7 +117,6 @@ def AG_A_COL_AG_A_ROW(m, k, n, px, py):
     elapsed_time = end_time - start_time
     comm.Barrier()
 
-    expected = np.matmul(A, B) + C    
     actual_tiles = comm.allgather((C_local, pure_column_distribution_get_local_indices(rank)))
     actual = assemble_matrix_from_tiles(actual_tiles)
 
@@ -152,6 +152,7 @@ def AG_A_COL_AG_B_COL(m, k, n, px, py):
     B_comm = nearby_rank_communicator(comm, px, rank)
 
     A, B, C = generate_matrices(m, k ,n)
+    expected = np.matmul(A, B) + C    
 
     A_local = col_major_distribution(A, px, py, rank)
     B_local = pure_column_distribution(B, size, rank)
@@ -221,7 +222,6 @@ def AG_A_COL_AG_B_COL(m, k, n, px, py):
     elapsed_time = end_time - start_time
     comm.Barrier()
 
-    expected = np.matmul(A, B) + C    
     actual_tiles = comm.allgather((C_local, col_major_distribution_get_local_indices(px, rank)))
     actual = assemble_matrix_from_tiles(actual_tiles)
 
@@ -362,7 +362,107 @@ def AG_A_ROW_AG_B_COL(m, k, n, px, py):
 
 def AG_A_ROW_AG_B_ROW(m, k, n, px, py):
     # 7
-    pass
+    np.random.seed(42)
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    assert m % size == 0
+    assert k % px == 0
+    assert n % py == 0
+
+    A, B, C = generate_matrices(m, k ,n)
+    expected = np.matmul(A, B) + C    
+
+    A_comm = nearby_rank_communicator(comm, py, rank)
+    B_comm = remainder_communicator(comm, py, rank)
+
+    A_local = pure_row_distribution(A, size, rank)
+    B_local = row_major_distribution(B, px, py, rank)
+    C_local = row_major_distribution(C, px, py, rank)
+
+    def algorithm(A, B, C, comm1, comm2, px, py):
+        comm1_rank = comm1.Get_rank()
+        comm2_rank = comm2.Get_rank()
+        C_index = comm2_rank
+        A_index = comm1_rank
+        outer_loop_iterations = px
+        outer_buffer = DoubleBuffer(B)
+        inner_loop_iterations = py
+        inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px, 0, A_index))
+
+        for i in range(outer_loop_iterations):
+            
+            B_curr = outer_buffer.get_current_tile()
+
+            if i != outer_loop_iterations - 1:
+                outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
+                outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
+                outer_send_request = comm1.Isend(
+                    buf=(np.ascontiguousarray(outer_buffer.get_current_tile()), MPI_DTYPE), dest=outer_send_rank
+                )
+                outer_receive_request = comm1.Irecv(
+                    buf=(outer_buffer.get_receive_buffer(), MPI_DTYPE), source=outer_receive_rank
+                )  
+
+            for j in range(inner_loop_iterations):
+
+                A_curr = get_subtile(A, 1, px, 0, A_index)
+
+                if j != inner_loop_iterations - 1:
+                    inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
+                    inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
+                    inner_send_request = comm2.Isend(
+                        buf=(np.ascontiguousarray(A_curr), MPI_DTYPE), dest=inner_send_rank
+                    )
+                    inner_receive_request = comm2.Irecv(
+                        buf=(inner_buffer, MPI_DTYPE), source=inner_receive_rank
+                    ) 
+
+                C_curr = get_subtile(C, py, 1, C_index, 0)
+
+                C_tmp = np.matmul(A_curr, B_curr) + C_curr
+                set_subtile(C, C_tmp, py, 1, C_index, 0)
+
+                if j != inner_loop_iterations - 1:
+                    MPI.Request.Waitall([inner_send_request, inner_receive_request])
+                    set_subtile(A, inner_buffer, 1, px, 0, A_index)   
+
+                C_index = (C_index + 1) % py       
+
+            if i != outer_loop_iterations - 1:
+                MPI.Request.Waitall([outer_send_request, outer_receive_request])
+                outer_buffer.swap()       
+
+            A_index = (A_index + 1) % px
+        
+        return C
+
+    comm.Barrier()
+    start_time = MPI.Wtime()
+    C_local = algorithm(A_local, B_local, C_local, B_comm, A_comm, px, py)
+    end_time = MPI.Wtime()
+    elapsed_time = end_time - start_time
+    comm.Barrier()
+
+    actual_tiles = comm.allgather((C_local, row_major_distribution_get_local_indices(py, rank)))
+    actual = assemble_matrix_from_tiles(actual_tiles)
+
+    correct = matrices_equal(expected, actual)
+
+    output = {
+        "elapsed_time": elapsed_time,
+        "correct": correct,
+        "matrices": {
+            "A": A,
+            "B": B,
+            "C": C
+        },
+        "expected": expected,
+        "actual": actual
+    }
+
+    return output
 
 def AG_A_ROW_RS_C_COL(m, k, n, px, py):
     # 8
