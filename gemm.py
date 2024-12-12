@@ -466,7 +466,109 @@ def AG_A_ROW_AG_B_ROW(m, k, n, px, py):
 
 def AG_A_ROW_RS_C_COL(m, k, n, px, py):
     # 8
-    pass
+    np.random.seed(42)
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    assert m % px == 0
+    assert k % py == 0
+    assert n % size == 0
+
+    A, B, C = generate_matrices(m, k ,n)
+    expected = np.matmul(A, B) + C
+
+    A_comm = remainder_communicator(comm, py, rank)
+    C_comm = nearby_rank_communicator(comm, py, rank)
+
+    A_local = row_major_distribution(A, px, py, rank)
+    B_local = col_major_distribution(B, py, px, rank) # flippped!
+    C_local = pure_column_distribution(C, size, rank) 
+
+    def algorithm(A, B, C, comm1, comm2, px, py):
+        comm1_rank = comm1.Get_rank()
+        comm2_rank = comm2.Get_rank()
+        B_index = (comm2_rank + 1) % py
+        C_index = comm1_rank
+        outer_loop_iterations = px
+        outer_buffer = DoubleBuffer(A)
+        inner_loop_iterations = py
+        inner_buffer = np.empty(shape=get_subtile_shape(C, px, 1, C_index, 0))
+
+        for i in range(outer_loop_iterations):
+
+            A_curr = outer_buffer.get_current_tile()
+
+            if i != outer_loop_iterations - 1:
+                outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
+                outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
+                outer_send_request = comm1.Isend(
+                    buf=(np.ascontiguousarray(outer_buffer.get_current_tile()), MPI_DTYPE), dest=outer_send_rank
+                )
+                outer_receive_request = comm1.Irecv(
+                    buf=(outer_buffer.get_receive_buffer(), MPI_DTYPE), source=outer_receive_rank
+                ) 
+
+            for j in range(inner_loop_iterations):
+
+                B_curr = get_subtile(B, 1, py, 0, B_index)
+
+                if j == 0:
+                    C_curr = get_subtile(C, px, 1, C_index, 0)            
+                else:
+                    MPI.Request.Waitall([inner_receive_request, inner_send_request])
+                    C_curr = inner_buffer
+
+                C_curr = np.matmul(A_curr, B_curr) + C_curr
+
+                if j == inner_loop_iterations - 1:
+                    set_subtile(C, C_curr, px, 1, C_index, 0)
+                else:
+                    inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
+                    inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
+                    inner_send_request = comm2.Isend(
+                        buf=(np.ascontiguousarray(C_curr), MPI_DTYPE), dest=inner_send_rank
+                    )
+                    inner_receive_request = comm2.Irecv(
+                        buf=(inner_buffer, MPI_DTYPE), source=inner_receive_rank
+                    )
+
+                B_index = (B_index + 1) % py 
+
+            if i != outer_loop_iterations - 1:
+                MPI.Request.Waitall([outer_send_request, outer_receive_request])
+                outer_buffer.swap() 
+
+            C_index = (C_index + 1) % px
+        
+        return C
+
+
+    comm.Barrier()
+    start_time = MPI.Wtime()
+    C_local = algorithm(A_local, B_local, C_local, A_comm, C_comm, px, py)
+    end_time = MPI.Wtime()
+    elapsed_time = end_time - start_time
+    comm.Barrier()
+
+    actual_tiles = comm.allgather((C_local, pure_column_distribution_get_local_indices(rank)))
+    actual = assemble_matrix_from_tiles(actual_tiles)
+
+    correct = matrices_equal(expected, actual)
+
+    output = {
+        "elapsed_time": elapsed_time,
+        "correct": correct,
+        "matrices": {
+            "A": A,
+            "B": B,
+            "C": C
+        },
+        "expected": expected,
+        "actual": actual
+    }
+
+    return output       
 
 def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
     # 9
