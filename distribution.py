@@ -79,6 +79,6 @@ def A4_distribution(matrix, px, py, rank):
     # it is the distribution for matrix A in matmul 4
     return get_subtile(matrix, 1, px * py, 0, px * (rank % py) + (rank // py))
 
-def C4_distribution(matrix, px, py, rank):
-    column_index = (rank // py) * py + (((rank % py) + 1) % py)
-    return get_subtile(matrix, 1, px * py, 0, column_index)
+# def C4_distribution(matrix, px, py, rank):
+#     column_index = (rank // py) * py + (((rank % py) + 1) % py)
+#     return get_subtile(matrix, 1, px * py, 0, column_index)

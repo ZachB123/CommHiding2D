@@ -22,8 +22,8 @@ def generate_matrices(m, k, n):
     # A, B, C
     A = generate_matrix(m, k, -9, 10,)
     B = generate_matrix(k, n, -9, 10,)
-    # C = generate_matrix(m, n, -9, 10,)
-    C = np.zeros(shape=(m,n)) # UNCOMMENT FOR ACTUAL TESTING
+    C = generate_matrix(m, n, -9, 10,)
+    # C = np.zeros(shape=(m,n)) # UNCOMMENT FOR ACTUAL TESTING
     # C = np.ones(shape=(m, n))
     # C = np.full((m, n), 2)
     # C[0,0] = 1
