@@ -122,7 +122,7 @@ GEMM_TESTING_CONFIGURATIONS = {
     "AG_A_COL_AG_B_ROW": TestGemmConfiguration(AG_A_COL_AG_B_ROW, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY), # 3
     "AG_A_COL_RS_C_COL": TestGemmConfiguration(AG_A_COL_RS_C_COL, MinGemmDimension.ONE, MinGemmDimension.SIZE, MinGemmDimension.SIZE), # 4
     "AG_A_COL_RS_C_ROW": TestGemmConfiguration(AG_A_COL_RS_C_ROW, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY), # 5
-
+    "AG_A_ROW_AG_B_COL": TestGemmConfiguration(AG_A_ROW_AG_B_COL, MinGemmDimension.SIZE, MinGemmDimension.ONE, MinGemmDimension.SIZE), # 6
     "AG_A_ROW_AG_B_ROW": TestGemmConfiguration(AG_A_ROW_AG_B_ROW, MinGemmDimension.SIZE, MinGemmDimension.PX, MinGemmDimension.PY), # 7
     "AG_A_ROW_RS_C_COL": TestGemmConfiguration(AG_A_ROW_RS_C_COL, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE), # 8
 

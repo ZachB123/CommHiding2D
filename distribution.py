@@ -74,10 +74,14 @@ def block_cyclic_distribution(matrix, px, py, row_index, start_col_index):
 
     return np.hstack(subtiles)
 
-def A4_distribution(matrix, px, py, rank):
+def alternating_column_distribution(matrix, px, py, rank):
     # idk what to call this function
-    # it is the distribution for matrix A in matmul 4
+    # it is the distribution for matrix A in matmul 4 and 5
     return get_subtile(matrix, 1, px * py, 0, px * (rank % py) + (rank // py))
+
+def alternating_row_distribution(matrix, px, py, rank):
+    return get_subtile(matrix, px * py, 1, px * (rank % py) + (rank // py), 0)    
+    # return get_subtile(matrix, px * py, 1, py * (rank % px) + (rank // px), 0)    
 
 # def C4_distribution(matrix, px, py, rank):
 #     column_index = (rank // py) * py + (((rank % py) + 1) % py)
