@@ -22,8 +22,8 @@ def generate_matrices(m, k, n):
     # A, B, C
     A = generate_matrix(m, k, -9, 10,)
     B = generate_matrix(k, n, -9, 10,)
-    C = generate_matrix(m, n, -9, 10,)
-    # C = np.zeros(shape=(m,n))
+    # C = generate_matrix(m, n, -9, 10,)
+    C = np.zeros(shape=(m,n)) # UNCOMMENT FOR ACTUAL TESTING
     # C = np.ones(shape=(m, n))
     # C = np.full((m, n), 2)
     # C[0,0] = 1
@@ -34,12 +34,12 @@ def matrices_equal(A, B):
 
 class DoubleBuffer:
     def __init__(self, initial_value):
-        self.first_buffer = initial_value
-        self.second_buffer = np.empty(initial_value.shape)
+        self.first_buffer = np.ascontiguousarray(initial_value, dtype=MATRIX_DTYPE)
+        self.second_buffer = np.ascontiguousarray(np.empty(initial_value.shape, dtype=MATRIX_DTYPE), dtype=MATRIX_DTYPE)
         self.current_buffer = self.first_buffer
 
     def get_receive_buffer(self):
-        # this is wait we can use in the mpi receive request
+        # this is what we can use in the mpi receive request
         # we receive into not the current buffer then swap it
         if self.current_buffer is self.first_buffer:
             return self.second_buffer

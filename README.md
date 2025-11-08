@@ -31,13 +31,13 @@ Run the Python program with the following options:
 ### Example
 To run the program:
 ```bash
-mpirun -n 8 python driver.py -a AG_A_ROW_X_AG_B_ROW -m 128 -k 128 -n 128 -px 4 -py 2
+mpirun -n 8 python driver.py -a AG_A_ROW_AG_B_ROW -m 128 -k 128 -n 128 -px 4 -py 2
 ```
 
 ### Explanation of the Example
 - `mpirun -np 8`: Runs the program using 8 processes.
 - `python driver.py`: Specifies the Python file to execute.
-- `-a AG_A_ROW_X_AG_B_ROW`: Uses the algorithm `AG_A_ROW_X_AG_B_ROW`.
+- `-a AG_A_ROW_AG_B_ROW`: Uses the algorithm `AG_A_ROW_AG_B_ROW`.
 - `-m 128 -k 128 -n 128`: Sets matrix dimensions M, K, and N to 128 each.
 - `-px 4 -py 2`: Divides the processors into a 4x2 grid.
 

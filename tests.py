@@ -23,11 +23,12 @@ from gemm import (
 )
 
 class MinGemmDimension(Enum):
+    ONE = auto()
     PX = auto()
     PY = auto()
     SIZE = auto()
 
-class TestGemmConfiguration():
+class TestGemmConfiguration:
     def __init__(self, algorithm, min_m, min_k, min_n):
         # min dims are elements of MinGemmDimension Enum
         self.algorithm = algorithm
@@ -35,18 +36,29 @@ class TestGemmConfiguration():
         self.min_k = min_k
         self.min_n = min_n
 
-    def get_min_dimensions(self, size, px, py):
-        min_m = px if self.min_m == MinGemmDimension.PX else py if self.min_m == MinGemmDimension.PY else size
-        min_k = size if self.min_k == MinGemmDimension.SIZE else px if self.min_k == MinGemmDimension.PX else py
-        min_n = py if self.min_n == MinGemmDimension.PY else size if self.min_n == MinGemmDimension.SIZE else px
+    def _resolve_dim(self, dim, size, px, py):
+        if dim == MinGemmDimension.PX:
+            return px
+        elif dim == MinGemmDimension.PY:
+            return py
+        elif dim == MinGemmDimension.SIZE:
+            return size
+        elif dim == MinGemmDimension.ONE:
+            return 1
+        else:
+            raise ValueError(f"Unknown MinGemmDimension: {dim}")
 
+    def get_min_dimensions(self, size, px, py):
+        min_m = self._resolve_dim(self.min_m, size, px, py)
+        min_k = self._resolve_dim(self.min_k, size, px, py)
+        min_n = self._resolve_dim(self.min_n, size, px, py)
         return min_m, min_k, min_n
 
 
 class TestGemm():
 
     ITERATIONS = 50
-    MULTIPLIER_RANGE = 10
+    MULTIPLIER_RANGE = 100
 
     def get_factors(self, n):
         if n <= 0:
@@ -105,9 +117,10 @@ class TestGemm():
 
 
 GEMM_TESTING_CONFIGURATIONS = {
-    "AG_A_COL_AG_A_ROW": TestGemmConfiguration(AG_A_COL_AG_A_ROW, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE), 
-    "AG_A_COL_AG_B_COL": TestGemmConfiguration(AG_A_COL_AG_B_COL, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE),
-    "AG_A_COL_AG_B_ROW": TestGemmConfiguration(AG_A_COL_AG_B_ROW, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY),
+    "AG_A_COL_AG_A_ROW": TestGemmConfiguration(AG_A_COL_AG_A_ROW, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE), # 1
+    "AG_A_COL_AG_B_COL": TestGemmConfiguration(AG_A_COL_AG_B_COL, MinGemmDimension.PX, MinGemmDimension.PY, MinGemmDimension.SIZE), # 2
+    "AG_A_COL_AG_B_ROW": TestGemmConfiguration(AG_A_COL_AG_B_ROW, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY), # 3
+    "AG_A_COL_RS_C_COL": TestGemmConfiguration(AG_A_COL_RS_C_COL, MinGemmDimension.ONE, MinGemmDimension.SIZE, MinGemmDimension.SIZE), # 4
     # 7
     "AG_A_ROW_AG_B_ROW": TestGemmConfiguration(AG_A_ROW_AG_B_ROW, MinGemmDimension.SIZE, MinGemmDimension.PX, MinGemmDimension.PY),
     # 8

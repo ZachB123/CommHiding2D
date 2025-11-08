@@ -1,7 +1,7 @@
 from mpi4py import MPI
 
+from constants import DEBUG_RANK
 
-DEBUG_RANK = 4
 
 def parallel_print(message, flush=True):
     """
@@ -57,8 +57,8 @@ def print_local_matrices(A, B, C, start=None):
     parallel_print(debug_string)
 
 
-def print_local_matrices_on_debug_rank(A, B, C, start=None):
+def print_local_matrices_on_debug_rank(A, B, C, start=None, debug_rank=DEBUG_RANK):
     debug_string = f"A:\n{A}\nB:\n{B}\nC:\n{C}\n"
     if start is not None:
         debug_string = f"{start}\n{debug_string}"
-    rank_print(debug_string)
+    rank_print(debug_string, debug_rank)
