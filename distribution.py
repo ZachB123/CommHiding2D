@@ -81,7 +81,16 @@ def alternating_column_distribution(matrix, px, py, rank):
 
 def alternating_row_distribution(matrix, px, py, rank):
     return get_subtile(matrix, px * py, 1, px * (rank % py) + (rank // py), 0)    
-    # return get_subtile(matrix, px * py, 1, py * (rank % px) + (rank // px), 0)    
+
+def A9_distribution(matrix, px, py, rank):
+    col_index = rank % px
+    curr_row_index = rank // px
+    subtiles = []
+    for i in range(px):
+        subtiles.append(get_subtile(matrix, px * py, px, curr_row_index, col_index))
+        curr_row_index += py
+
+    return np.vstack(subtiles)
 
 # def C4_distribution(matrix, px, py, rank):
 #     column_index = (rank // py) * py + (((rank % py) + 1) % py)
