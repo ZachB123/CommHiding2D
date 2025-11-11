@@ -74,6 +74,13 @@ def block_cyclic_distribution(matrix, px, py, row_index, start_col_index):
 
     return np.hstack(subtiles)
 
+def C11_get_local_indices(C_local, px, py, row_index, start_column_index):
+    output = []
+    for i in range(px):
+        output.append((get_subtile(C_local, 1, px, 0, i), (row_index, start_column_index + i * py)))
+
+    return output
+
 def alternating_column_distribution(matrix, px, py, rank):
     # idk what to call this function
     # it is the distribution for matrix A in matmul 4 and 5
