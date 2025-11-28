@@ -1597,4 +1597,113 @@ def AG_B_ROW_RS_C_ROW(m, k, n, px, py):
 
 def RS_C_COL_RS_C_ROW(m, k, n, px, py):
     # 15
-    pass
+    np.random.seed(42)
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    assert m % px == 0
+    assert k % size == 0
+    assert n % py == 0
+
+    C_comm1 = nearby_rank_communicator(comm, px, rank)
+    C_comm2 = remainder_communicator(comm, px, rank)
+
+    A, B, C = generate_matrices(m, k ,n)
+    expected = np.matmul(A, B) + C    
+
+    A_local = pure_column_distribution(A, size, rank)
+    B_local = pure_row_distribution(B, size, rank)
+    C_local = col_major_distribution(C, px, py, rank)
+
+    # print_local_matrices_on_debug_rank(A, B, C)
+    # print_local_matrices_on_debug_rank(A_local, B_local, C_local, debug_rank=5)
+
+    def algorithm(A, B, C, comm1, comm2, px, py):
+        comm1_rank = comm1.Get_rank()
+        comm2_rank = comm2.Get_rank()
+        A_index = (comm1_rank + 1) % px
+        # B_index = (comm2_rank - 1) % py
+        B_index = (comm2_rank + px) % py
+        outer_loop_iterations = px
+        buffer = DoubleBuffer(np.zeros(shape=C.shape)) # only one buffer needed since just moving C
+        inner_loop_iterations = py
+
+        for i in range(outer_loop_iterations):
+            
+            for j in range(inner_loop_iterations):
+
+                A_curr = get_subtile(A, px, 1, A_index, 0)
+                B_curr = get_subtile(B, 1, py, 0, B_index)
+
+                if i == 0 and j == 0:
+                    C_curr = buffer.get_current_tile()
+                else:
+                    MPI.Request.Waitall([send_request, receive_request])
+                    buffer.swap()
+                    C_curr = buffer.get_current_tile()
+
+                # print_local_matrices_on_debug_rank(A_curr, B_curr, C_curr, debug_rank=0)
+                C_curr = np.matmul(A_curr, B_curr) + C_curr
+                
+                if i == outer_loop_iterations - 1 and j == inner_loop_iterations - 1:
+                    C = C + C_curr
+                elif j == inner_loop_iterations - 1:
+                    # send through comm1
+                    send_rank = (comm1_rank - 1) % comm1.Get_size()
+                    receive_rank = (comm1_rank + 1) % comm1.Get_size()
+                    send_request = comm1.Isend(
+                        buf=(C_curr, MPI_DTYPE), 
+                        dest=send_rank
+                    )
+                    receive_request = comm1.Irecv(
+                        buf=(buffer.get_receive_buffer(), MPI_DTYPE), 
+                        source=receive_rank
+                    ) 
+                    # rank_print(f"SENT TO RANK{send_rank}", print_rank=0)
+                else:
+                    # send through comm2
+                    send_rank = (comm2_rank - 1) % comm2.Get_size()
+                    receive_rank = (comm2_rank + 1) % comm2.Get_size()
+                    send_request = comm2.Isend(
+                        buf=(C_curr, MPI_DTYPE), 
+                        dest=send_rank
+                    )
+                    receive_request = comm2.Irecv(
+                        buf=(buffer.get_receive_buffer(), MPI_DTYPE), 
+                        source=receive_rank
+                    ) 
+                    # rank_print(f"SENT TO RANK{send_rank}", print_rank=0)
+
+                if j != inner_loop_iterations - 1:
+                    B_index = (B_index + 1) % py
+
+            A_index = (A_index + 1) % px
+
+        return C
+    
+    comm.Barrier()
+    start_time = MPI.Wtime()
+    C_local = algorithm(A_local, B_local, C_local, C_comm1, C_comm2, px, py)
+    end_time = MPI.Wtime()
+    elapsed_time = end_time - start_time
+    comm.Barrier()
+
+    actual_tiles = comm.allgather((C_local, col_major_distribution_get_local_indices(px, rank)))
+    actual = assemble_matrix_from_tiles(actual_tiles)
+
+    correct = matrices_equal(expected, actual)
+
+    output = {
+        "elapsed_time": elapsed_time,
+        "correct": correct,
+        "matrices": {
+            "A": A,
+            "B": B,
+            "C": C
+        },
+        "expected": expected,
+        "actual": actual
+    }
+
+    return output
