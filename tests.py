@@ -1,6 +1,6 @@
 from enum import Enum, auto
-from math import sqrt
 import random
+import argparse
 from mpi4py import MPI
 
 from debug import rank_print
@@ -134,10 +134,27 @@ GEMM_TESTING_CONFIGURATIONS = {
     "RS_C_COL_RS_C_ROW": TestGemmConfiguration(RS_C_COL_RS_C_ROW, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY), # 15
 }
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Test GEMM algorithms')
+    parser.add_argument(
+        '-a', '--algorithm',
+        type=str,
+        choices=list(GEMM_TESTING_CONFIGURATIONS.keys()),
+        help='Specify a single algorithm to test'
+    )
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
     tests = TestGemm()
-    for config in GEMM_TESTING_CONFIGURATIONS.values():
+    
+    if args.algorithm:
+        config = GEMM_TESTING_CONFIGURATIONS[args.algorithm]
         tests.test_2d_gemm(config)
+    else:
+        # Run all algorithms
+        for config in GEMM_TESTING_CONFIGURATIONS.values():
+            tests.test_2d_gemm(config)
 
 
 if __name__ == "__main__":

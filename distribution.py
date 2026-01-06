@@ -13,7 +13,7 @@ def get_subtile(tile, rows, columns, i, j):
     start_col = j * subtile_columns
     end_col = start_col + subtile_columns
 
-    return tile[start_row:end_row, start_col:end_col]
+    return tile[start_row : end_row, start_col : end_col]
 
 
 def get_subtile_shape(tile, rows, columns, i, j):
@@ -34,7 +34,7 @@ def set_subtile(tile, subtile, rows, columns, i, j):
     end_col = start_col + subtile_columns
 
     # Set the subtile in the original tile
-    tile[start_row:end_row, start_col:end_col] = subtile
+    tile[start_row : end_row, start_col : end_col] = subtile
 
 
 def row_major_distribution(matrix, px, py, rank):

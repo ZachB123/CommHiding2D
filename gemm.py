@@ -61,7 +61,7 @@ def AG_A_COL_AG_A_ROW(m, k, n, px, py):
         B_index = comm2_rank
         C_index = comm1_rank
         outer_loop_iterations = px
-        buffer = DoubleBuffer(A) # only one buffer needed since col A and row A
+        buffer = DoubleBuffer(A, make_contiguous=False) # only one buffer needed since col A and row A
         inner_loop_iterations = py
 
         for i in range(outer_loop_iterations):
@@ -75,7 +75,7 @@ def AG_A_COL_AG_A_ROW(m, k, n, px, py):
                     inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
                     inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
                     inner_send_request = comm2.Isend(
-                        buf=(np.ascontiguousarray(A_curr, dtype=MATRIX_DTYPE), MPI_DTYPE), dest=inner_send_rank
+                        buf=(A_curr, MPI_DTYPE), dest=inner_send_rank
                     )
                     inner_receive_request = comm2.Irecv(
                         buf=(buffer.get_receive_buffer(), MPI_DTYPE), source=inner_receive_rank
@@ -84,7 +84,7 @@ def AG_A_COL_AG_A_ROW(m, k, n, px, py):
                     outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                     outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                     outer_send_request = comm1.Isend(
-                        buf=(np.ascontiguousarray(buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), dest=outer_send_rank
+                        buf=(buffer.get_current_tile(), MPI_DTYPE), dest=outer_send_rank
                     )
                     outer_receive_request = comm1.Irecv(
                         buf=(buffer.get_receive_buffer(), MPI_DTYPE), source=outer_receive_rank
@@ -164,7 +164,7 @@ def AG_A_COL_AG_B_COL(m, k, n, px, py):
         C_index = comm2_rank
         B_index = comm1_rank
         outer_loop_iterations = py
-        outer_buffer = DoubleBuffer(A)
+        outer_buffer = DoubleBuffer(A, make_contiguous=False)
         inner_loop_iterations = px
         inner_buffer = np.empty(shape=get_subtile_shape(B, py, 1, B_index, 0), dtype=MATRIX_DTYPE)
 
@@ -174,7 +174,7 @@ def AG_A_COL_AG_B_COL(m, k, n, px, py):
                 outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                 outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                 outer_send_request = comm1.Isend(
-                    buf=(np.ascontiguousarray(outer_buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), dest=outer_send_rank
+                    buf=(outer_buffer.get_current_tile(), MPI_DTYPE), dest=outer_send_rank
                 )
                 outer_receive_request = comm1.Irecv(
                     buf=(outer_buffer.get_receive_buffer(), MPI_DTYPE), source=outer_receive_rank
@@ -189,7 +189,7 @@ def AG_A_COL_AG_B_COL(m, k, n, px, py):
                     inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
                     inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
                     inner_send_request = comm2.Isend(
-                        buf=(np.ascontiguousarray(B_curr, dtype=MATRIX_DTYPE), MPI_DTYPE), dest=inner_send_rank
+                        buf=(B_curr, MPI_DTYPE), dest=inner_send_rank
                     )
                     inner_receive_request = comm2.Irecv(
                         buf=(inner_buffer, MPI_DTYPE), source=inner_receive_rank
@@ -275,7 +275,6 @@ def AG_A_COL_AG_B_ROW(m, k, n, px, py):
         inner_loop_iterations = py
         inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px, 0, A_index), dtype=MATRIX_DTYPE)#DoubleBuffer(get_subtile(A, 1, px, 0, inner_index))
 
-
         for i in range(outer_loop_iterations):
 
             for j in range(inner_loop_iterations):
@@ -298,7 +297,7 @@ def AG_A_COL_AG_B_ROW(m, k, n, px, py):
                     outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                     outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                     outer_send_request = comm1.Isend(
-                        buf=(np.ascontiguousarray(B_curr, dtype=MATRIX_DTYPE), MPI_DTYPE), dest=outer_send_rank
+                        buf=(B_curr, MPI_DTYPE), dest=outer_send_rank
                     )
                     outer_receive_request = comm1.Irecv(
                         buf=(outer_buffer, MPI_DTYPE), source=outer_receive_rank
@@ -377,9 +376,9 @@ def AG_A_COL_RS_C_COL(m, k, n, px, py):
         B_row_index = comm2_rank
         B_col_index = (comm1_rank + 1) % py # this plus one here and in its update is super trippy and not well communicated in the thesis
         outer_loop_iterations = py
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE))
+        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=False)
         inner_loop_iterations = px
-        inner_buffer = DoubleBuffer(A)
+        inner_buffer = DoubleBuffer(A, make_contiguous=True)
 
         for i in range(outer_loop_iterations):
 
@@ -398,7 +397,7 @@ def AG_A_COL_RS_C_COL(m, k, n, px, py):
                     inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
                     inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
                     inner_send_request = comm2.Isend(
-                        buf=(np.ascontiguousarray(inner_buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), 
+                        buf=(inner_buffer.get_current_tile(), MPI_DTYPE),
                         dest=inner_send_rank
                     )
                     inner_receive_request = comm2.Irecv(
@@ -423,7 +422,7 @@ def AG_A_COL_RS_C_COL(m, k, n, px, py):
                 outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                 outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                 outer_send_request = comm1.Isend(
-                    buf=(np.ascontiguousarray(C_curr, dtype=MATRIX_DTYPE), MPI_DTYPE),
+                    buf=(C_curr, MPI_DTYPE),
                     dest=outer_send_rank
                 )
                 outer_receive_request = comm1.Irecv(
@@ -495,9 +494,9 @@ def AG_A_COL_RS_C_ROW(m, k, n, px, py):
         A_index = (comm1_rank + 1) % px
         B_index = comm2_rank
         outer_loop_iterations = px
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape))
+        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape), make_contiguous=True)
         inner_loop_iterations = py
-        inner_buffer = DoubleBuffer(get_subtile(A, px, 1, A_index, 0))
+        inner_buffer = DoubleBuffer(get_subtile(A, px, 1, A_index, 0), make_contiguous=True)
 
         for i in range(outer_loop_iterations):
             if i == 0:
@@ -539,7 +538,7 @@ def AG_A_COL_RS_C_ROW(m, k, n, px, py):
                 outer_send_rank = (comm1_rank - 1) % comm1.Get_size() # The arrows in the paper show this as a plus I think
                 outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                 outer_send_request = comm1.Isend(
-                    buf=np.ascontiguousarray(C_curr, dtype=MATRIX_DTYPE),
+                    buf=C_curr,
                     dest=outer_send_rank
                 )
                 outer_receive_request = comm1.Irecv(
@@ -609,9 +608,9 @@ def AG_A_ROW_AG_B_COL(m, k, n, px, py):
         C_row_index = comm1_rank
         C_col_index = comm2_rank
         outer_loop_iterations = px
-        outer_buffer = DoubleBuffer(A)
+        outer_buffer = DoubleBuffer(A, make_contiguous=False)
         inner_loop_iterations = py
-        inner_buffer = DoubleBuffer(B)
+        inner_buffer = DoubleBuffer(B, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
 
@@ -621,7 +620,7 @@ def AG_A_ROW_AG_B_COL(m, k, n, px, py):
                 outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                 outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                 outer_send_request = comm1.Isend(
-                    buf=(np.ascontiguousarray(outer_buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), 
+                    buf=(outer_buffer.get_current_tile(), MPI_DTYPE),
                     dest=outer_send_rank
                 )
                 outer_receive_request = comm1.Irecv(
@@ -637,7 +636,7 @@ def AG_A_ROW_AG_B_COL(m, k, n, px, py):
                     inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
                     inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
                     inner_send_request = comm2.Isend(
-                        buf=(np.ascontiguousarray(inner_buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), 
+                        buf=(inner_buffer.get_current_tile(), MPI_DTYPE),
                         dest=inner_send_rank
                     )
                     inner_receive_request = comm2.Irecv(
@@ -718,7 +717,7 @@ def AG_A_ROW_AG_B_ROW(m, k, n, px, py):
         C_index = comm2_rank
         A_index = comm1_rank
         outer_loop_iterations = px
-        outer_buffer = DoubleBuffer(B)
+        outer_buffer = DoubleBuffer(B, make_contiguous=False)
         inner_loop_iterations = py
         inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px, 0, A_index), dtype=MATRIX_DTYPE)
 
@@ -730,7 +729,7 @@ def AG_A_ROW_AG_B_ROW(m, k, n, px, py):
                 outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                 outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                 outer_send_request = comm1.Isend(
-                    buf=(np.ascontiguousarray(outer_buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), dest=outer_send_rank
+                    buf=(outer_buffer.get_current_tile(), MPI_DTYPE), dest=outer_send_rank
                 )
                 outer_receive_request = comm1.Irecv(
                     buf=(outer_buffer.get_receive_buffer(), MPI_DTYPE), source=outer_receive_rank
@@ -822,7 +821,7 @@ def AG_A_ROW_RS_C_COL(m, k, n, px, py):
         B_index = (comm2_rank + 1) % py
         C_index = comm1_rank
         outer_loop_iterations = px
-        outer_buffer = DoubleBuffer(A)
+        outer_buffer = DoubleBuffer(A, make_contiguous=False)
         inner_loop_iterations = py
         inner_buffer = np.empty(shape=get_subtile_shape(C, px, 1, C_index, 0), dtype=MATRIX_DTYPE)
 
@@ -834,7 +833,7 @@ def AG_A_ROW_RS_C_COL(m, k, n, px, py):
                 outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                 outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                 outer_send_request = comm1.Isend(
-                    buf=(np.ascontiguousarray(outer_buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), dest=outer_send_rank
+                    buf=(outer_buffer.get_current_tile(), MPI_DTYPE), dest=outer_send_rank
                 )
                 outer_receive_request = comm1.Irecv(
                     buf=(outer_buffer.get_receive_buffer(), MPI_DTYPE), source=outer_receive_rank
@@ -859,7 +858,7 @@ def AG_A_ROW_RS_C_COL(m, k, n, px, py):
                     inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
                     inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
                     inner_send_request = comm2.Isend(
-                        buf=(np.ascontiguousarray(C_curr, dtype=MATRIX_DTYPE), MPI_DTYPE), dest=inner_send_rank
+                        buf=(C_curr, MPI_DTYPE), dest=inner_send_rank
                     )
                     inner_receive_request = comm2.Irecv(
                         buf=(inner_buffer, MPI_DTYPE), source=inner_receive_rank
@@ -904,7 +903,7 @@ def AG_A_ROW_RS_C_COL(m, k, n, px, py):
 
 def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
     # 9
-    # there is a typo in the drawing
+    # there is a typo in the drawing, bottom row, p0 for p1 should be p1 for p1
     np.random.seed(42)
     comm = MPI.COMM_WORLD
     size = comm.Get_size()
@@ -933,9 +932,9 @@ def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
         A_index = (comm1_rank + 1) % px
         C_index = comm2_rank
         outer_loop_iterations = px
-        outer_buffer = DoubleBuffer(np.zeros(C.shape))
+        outer_buffer = DoubleBuffer(np.zeros(C.shape), make_contiguous=True)
         inner_loop_iterations = py
-        inner_buffer = np.empty(shape=get_subtile_shape(A, px, 1, A_index, 0))
+        inner_buffer = np.empty(shape=get_subtile_shape(A, px, 1, A_index, 0), dtype=MATRIX_DTYPE)
         # add to big C block what we add with C at the end to return
 
         B_curr = B
@@ -958,7 +957,7 @@ def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
                     inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
                     inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
                     inner_send_request = comm2.Isend(
-                        buf=(np.ascontiguousarray(A_curr, dtype=MATRIX_DTYPE), MPI_DTYPE), 
+                        buf=(A_curr, MPI_DTYPE),
                         dest=inner_send_rank
                     )
                     inner_receive_request = comm2.Irecv(
@@ -1048,7 +1047,7 @@ def AG_B_COL_AG_B_ROW(m, k, n, px, py):
         A_index = comm2_rank
         C_index = comm1_rank
         outer_loop_iterations = py
-        buffer = DoubleBuffer(B)
+        buffer = DoubleBuffer(B, make_contiguous=False)
         inner_loop_iterations = px
 
         for i in range(outer_loop_iterations):
@@ -1062,7 +1061,7 @@ def AG_B_COL_AG_B_ROW(m, k, n, px, py):
                     inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
                     inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
                     inner_send_request = comm2.Isend(
-                        buf=(np.ascontiguousarray(buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), dest=inner_send_rank
+                        buf=(buffer.get_current_tile(), MPI_DTYPE), dest=inner_send_rank
                     )
                     inner_receive_request = comm2.Irecv(
                         buf=(buffer.get_receive_buffer(), MPI_DTYPE), source=inner_receive_rank
@@ -1071,7 +1070,7 @@ def AG_B_COL_AG_B_ROW(m, k, n, px, py):
                     outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
                     outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
                     outer_send_request = comm1.Isend(
-                        buf=(np.ascontiguousarray(buffer.get_current_tile(), dtype=MATRIX_DTYPE), MPI_DTYPE), dest=outer_send_rank
+                        buf=(buffer.get_current_tile(), MPI_DTYPE), dest=outer_send_rank
                     )
                     outer_receive_request = comm1.Irecv(
                         buf=(buffer.get_receive_buffer(), MPI_DTYPE), source=outer_receive_rank
@@ -1158,9 +1157,9 @@ def AG_B_COL_RS_C_COL(m, k, n, px, py):
         B_index = (comm1_rank + 1) % py
         C_index = comm2_rank
         outer_loop_iterations = py
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape))
+        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape), make_contiguous=True)
         inner_loop_iterations = px
-        inner_buffer = DoubleBuffer(B)
+        inner_buffer = DoubleBuffer(B, make_contiguous=False)
 
         A_curr = A
 
@@ -1279,9 +1278,9 @@ def AG_B_COL_RS_C_ROW(m, k, n, px, py):
         A_index = (comm2_rank + 1) % px
         C_index = comm1_rank
         outer_loop_iterations = py
-        outer_buffer = DoubleBuffer(B)
+        outer_buffer = DoubleBuffer(B, make_contiguous=False)
         inner_loop_iterations = px
-        inner_buffer = DoubleBuffer(np.zeros(shape=C.shape))
+        inner_buffer = DoubleBuffer(np.zeros(shape=C.shape), make_contiguous=True)
 
         for i in range(outer_loop_iterations):
             B_curr = outer_buffer.get_current_tile()
@@ -1395,9 +1394,9 @@ def AG_B_ROW_RS_C_COL(m, k, n, px, py):
         A_index = comm2_rank
         B_index = (comm1_rank + 1) % py
         outer_loop_iterations = py
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE))
+        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=False)
         inner_loop_iterations = px
-        inner_buffer = DoubleBuffer(B)
+        inner_buffer = DoubleBuffer(B, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
             if i == 0:
@@ -1509,9 +1508,9 @@ def AG_B_ROW_RS_C_ROW_BROKEN(m, k, n, px, py):
         comm2_rank = comm2.Get_rank()
         A_col_index = rank # increments by py, gets set at the start of the outer loop
         outer_loop_iterations = py
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE))
+        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=True)
         inner_loop_iterations = px
-        inner_buffer = DoubleBuffer(B)
+        inner_buffer = DoubleBuffer(B, make_contiguous=True)
 
         for i in range(outer_loop_iterations):
             # interesting this is the same formula as in the A14 distribution
@@ -1627,9 +1626,9 @@ def AG_B_ROW_RS_C_ROW(m, k, n, px, py):
         A_col_index = comm2.Get_rank()
         A_row_index = (comm1.Get_rank() + 1) % px 
         outer_loop_iterations = px
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE))
+        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=False)
         inner_loop_iterations = py
-        inner_buffer = DoubleBuffer(B)
+        inner_buffer = DoubleBuffer(B, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
 
@@ -1744,7 +1743,7 @@ def RS_C_COL_RS_C_ROW(m, k, n, px, py):
         # B_index = (comm2_rank - 1) % py
         B_index = (comm2_rank + px) % py
         outer_loop_iterations = px
-        buffer = DoubleBuffer(np.zeros(shape=C.shape)) # only one buffer needed since just moving C
+        buffer = DoubleBuffer(np.zeros(shape=C.shape), make_contiguous=True) # only one buffer needed since just moving C
         inner_loop_iterations = py
 
         for i in range(outer_loop_iterations):

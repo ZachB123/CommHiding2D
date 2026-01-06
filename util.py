@@ -33,9 +33,13 @@ def matrices_equal(A, B):
     return np.all(np.isclose(A, B))
 
 class DoubleBuffer:
-    def __init__(self, initial_value):
-        self.first_buffer = np.ascontiguousarray(initial_value, dtype=MATRIX_DTYPE)
-        self.second_buffer = np.ascontiguousarray(np.empty(initial_value.shape, dtype=MATRIX_DTYPE), dtype=MATRIX_DTYPE)
+    def __init__(self, initial_value, make_contiguous=False):
+        if make_contiguous:
+            self.first_buffer = np.ascontiguousarray(initial_value, dtype=MATRIX_DTYPE)
+        else:
+            self.first_buffer = initial_value
+        # we never need to make the second buffer contiguous because the np.empty is contiguous by default
+        self.second_buffer = np.empty(initial_value.shape, dtype=MATRIX_DTYPE)
         self.current_buffer = self.first_buffer
 
     def get_receive_buffer(self):
