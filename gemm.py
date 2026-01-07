@@ -381,13 +381,8 @@ def AG_A_COL_RS_C_COL(m, k, n, px, py):
         inner_buffer = DoubleBuffer(A, make_contiguous=True)
 
         for i in range(outer_loop_iterations):
-
-            if i == 0:
-                C_curr = outer_buffer.get_current_tile()
-            else:
-                MPI.Request.Waitall([outer_receive_request, outer_send_request])
-                outer_buffer.swap()
-                C_curr = outer_buffer.get_current_tile()
+            
+            C_temp = np.zeros(shape=C.shape, dtype=MATRIX_DTYPE)
 
             for j in range(inner_loop_iterations):
 
@@ -406,7 +401,7 @@ def AG_A_COL_RS_C_COL(m, k, n, px, py):
                     )
 
                 B_curr = get_subtile(B, px, py, B_row_index, B_col_index)
-                C_curr = np.matmul(A_curr, B_curr) + C_curr
+                C_temp = np.matmul(A_curr, B_curr) + C_temp
 
                 # print_local_matrices_on_debug_rank(A_curr, B_curr, C_curr, debug_rank=0)
 
@@ -415,6 +410,15 @@ def AG_A_COL_RS_C_COL(m, k, n, px, py):
                     inner_buffer.swap()
                 
                 B_row_index = (B_row_index + 1) % px
+
+            if i == 0:
+                C_curr = outer_buffer.get_current_tile()
+            else:
+                MPI.Request.Waitall([outer_receive_request, outer_send_request])
+                outer_buffer.swap()
+                C_curr = outer_buffer.get_current_tile()
+
+            C_curr = C_curr + C_temp
 
             if i == outer_loop_iterations - 1:
                 C += C_curr
@@ -494,17 +498,13 @@ def AG_A_COL_RS_C_ROW(m, k, n, px, py):
         A_index = (comm1_rank + 1) % px
         B_index = comm2_rank
         outer_loop_iterations = px
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape), make_contiguous=True)
+        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=True)
         inner_loop_iterations = py
         inner_buffer = DoubleBuffer(get_subtile(A, px, 1, A_index, 0), make_contiguous=True)
 
         for i in range(outer_loop_iterations):
-            if i == 0:
-                C_curr = outer_buffer.get_current_tile()
-            else:
-                MPI.Request.Waitall([outer_receive_request, outer_send_request])
-                outer_buffer.swap()
-                C_curr = outer_buffer.get_current_tile()
+
+            C_temp = np.zeros(shape=C.shape, dtype=MATRIX_DTYPE)
 
             for j in range(inner_loop_iterations):
                 
@@ -524,13 +524,22 @@ def AG_A_COL_RS_C_ROW(m, k, n, px, py):
 
                 B_curr = get_subtile(B, py, 1, B_index, 0)
 
-                C_curr = np.matmul(A_curr, B_curr) + C_curr
+                C_temp = np.matmul(A_curr, B_curr) + C_temp
 
                 if j != inner_loop_iterations - 1:
                     MPI.Request.Waitall([inner_send_request, inner_receive_request])
                     inner_buffer.swap()
 
                 B_index = (B_index + 1) % py # I think there is a typo in the thesis, #5 shows B_index - 1 here
+
+            if i == 0:
+                C_curr = outer_buffer.get_current_tile()
+            else:
+                MPI.Request.Waitall([outer_receive_request, outer_send_request])
+                outer_buffer.swap()
+                C_curr = outer_buffer.get_current_tile()
+
+            C_curr = C_curr + C_temp
 
             if i == outer_loop_iterations - 1:
                 C += C_curr
@@ -843,13 +852,15 @@ def AG_A_ROW_RS_C_COL(m, k, n, px, py):
 
                 B_curr = get_subtile(B, 1, py, 0, B_index)
 
+                C_temp = np.matmul(A_curr, B_curr)
+
                 if j == 0:
                     C_curr = np.zeros(shape=get_subtile_shape(C, px, 1, C_index, 0), dtype=MATRIX_DTYPE)            
                 else:
                     MPI.Request.Waitall([inner_receive_request, inner_send_request])
                     C_curr = inner_buffer
 
-                C_curr = np.matmul(A_curr, B_curr) + C_curr
+                C_curr = C_curr + C_temp
 
                 if j == inner_loop_iterations - 1:
                     C_curr = C_curr + get_subtile(C, px, 1, C_index, 0)   
@@ -940,14 +951,8 @@ def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
         B_curr = B
 
         for i in range(outer_loop_iterations):
-
-            if i == 0:
-                # C_curr is the whole C block
-                C_curr = outer_buffer.get_current_tile()
-            else:
-                MPI.Request.Waitall([outer_send_request, outer_receive_request])
-                outer_buffer.swap()
-                C_curr = outer_buffer.get_current_tile()
+            
+            C_temp = np.zeros(C.shape)
 
             for j in range(inner_loop_iterations):
 
@@ -965,9 +970,9 @@ def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
                         source=inner_receive_rank
                     )
 
-                C_curr_curr = get_subtile(C_curr, py, 1, C_index, 0)
-                C_curr_curr = np.matmul(A_curr, B_curr) + C_curr_curr
-                set_subtile(C_curr, C_curr_curr, py, 1, C_index, 0)
+                C_temp_temp = get_subtile(C_temp, py, 1, C_index, 0)
+                C_temp_temp = np.matmul(A_curr, B_curr) + C_temp_temp
+                set_subtile(C_temp, C_temp_temp, py, 1, C_index, 0)
                 # print_local_matrices_on_debug_rank(A_curr, C_curr_curr, C_curr, debug_rank=1)
 
                 if j != inner_loop_iterations - 1:
@@ -975,6 +980,16 @@ def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
                     set_subtile(A, inner_buffer, px, 1, A_index, 0)
 
                 C_index = (C_index + 1) % py
+
+            if i == 0:
+                # C_curr is the whole C block
+                C_curr = outer_buffer.get_current_tile()
+            else:
+                MPI.Request.Waitall([outer_send_request, outer_receive_request])
+                outer_buffer.swap()
+                C_curr = outer_buffer.get_current_tile()
+
+            C_curr = C_curr + C_temp
 
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
@@ -1164,13 +1179,8 @@ def AG_B_COL_RS_C_COL(m, k, n, px, py):
         A_curr = A
 
         for i in range(outer_loop_iterations):
-
-            if i == 0:
-                C_curr = outer_buffer.get_current_tile()
-            else:
-                MPI.Request.Waitall([outer_send_request, outer_receive_request])
-                outer_buffer.swap()
-                C_curr = outer_buffer.get_current_tile()
+            
+            C_temp = np.zeros(C.shape)
 
             for j in range(inner_loop_iterations):
 
@@ -1189,10 +1199,10 @@ def AG_B_COL_RS_C_COL(m, k, n, px, py):
                     )
                 
                 B_curr_curr = get_subtile(B_curr, 1, py, 0, B_index)
-                C_curr_curr = get_subtile(C_curr, 1, px, 0, C_index)
+                C_temp_temp = get_subtile(C_temp, 1, px, 0, C_index)
 
-                C_curr_curr = np.matmul(A_curr, B_curr_curr) + C_curr_curr
-                set_subtile(C_curr, C_curr_curr, 1, px, 0, C_index)
+                C_temp_temp = np.matmul(A_curr, B_curr_curr) + C_temp_temp
+                set_subtile(C_temp, C_temp_temp, 1, px, 0, C_index)
 
                 # print_local_matrices_on_debug_rank(A_curr, B_curr_curr, C_curr, debug_rank=0)
 
@@ -1201,6 +1211,15 @@ def AG_B_COL_RS_C_COL(m, k, n, px, py):
                     inner_buffer.swap()
 
                 C_index = (C_index + 1) % px
+
+            if i == 0:
+                C_curr = outer_buffer.get_current_tile()
+            else:
+                MPI.Request.Waitall([outer_send_request, outer_receive_request])
+                outer_buffer.swap()
+                C_curr = outer_buffer.get_current_tile()
+
+            C_curr = C_curr + C_temp
 
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
@@ -1301,6 +1320,10 @@ def AG_B_COL_RS_C_ROW(m, k, n, px, py):
 
                 A_curr = get_subtile(A, px, 1, A_index, 0)
 
+                C_temp_temp = np.matmul(A_curr, B_curr)
+
+                # print_local_matrices_o n_debug_rank(A_curr, B_curr, C_curr, debug_rank=0)
+
                 if i == 0 and j == 0:
                     C_curr = inner_buffer.get_current_tile()         
                 else:
@@ -1309,9 +1332,8 @@ def AG_B_COL_RS_C_ROW(m, k, n, px, py):
                     C_curr = inner_buffer.get_current_tile()
 
                 C_curr_curr = get_subtile(C_curr, 1, py, 0, C_index)
-                C_curr_curr = np.matmul(A_curr, B_curr) + C_curr_curr
+                C_curr_curr = C_curr_curr + C_temp_temp
                 set_subtile(C_curr, C_curr_curr, 1, py, 0, C_index)
-                # print_local_matrices_o n_debug_rank(A_curr, B_curr, C_curr, debug_rank=0)
 
                 if i == outer_loop_iterations - 1 and j == inner_loop_iterations - 1:
                     C = C + C_curr
@@ -1399,12 +1421,8 @@ def AG_B_ROW_RS_C_COL(m, k, n, px, py):
         inner_buffer = DoubleBuffer(B, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
-            if i == 0:
-                C_curr = outer_buffer.get_current_tile()
-            else:
-                MPI.Request.Waitall([outer_receive_request, outer_send_request])
-                outer_buffer.swap()
-                C_curr = outer_buffer.get_current_tile()
+
+            C_temp = np.zeros(shape=C.shape)
 
             for j in range(inner_loop_iterations):
 
@@ -1424,7 +1442,7 @@ def AG_B_ROW_RS_C_COL(m, k, n, px, py):
 
                 A_curr = get_subtile(A, 1, px, 0, A_index)
                 B_curr_curr = get_subtile(B_curr, 1, py, 0, B_index)
-                C_curr = np.matmul(A_curr, B_curr_curr) + C_curr
+                C_temp = np.matmul(A_curr, B_curr_curr) + C_temp
                 # print_local_matrices_on_debug_rank(A_curr, B_curr_curr, C_curr, debug_rank=0)
 
                 if j != inner_loop_iterations - 1 or i != outer_loop_iterations - 1:
@@ -1432,6 +1450,15 @@ def AG_B_ROW_RS_C_COL(m, k, n, px, py):
                     inner_buffer.swap()
 
                 A_index = (A_index + 1) % px
+
+            if i == 0:
+                C_curr = outer_buffer.get_current_tile()
+            else:
+                MPI.Request.Waitall([outer_receive_request, outer_send_request])
+                outer_buffer.swap()
+                C_curr = outer_buffer.get_current_tile()
+
+            C_curr = C_curr + C_temp
 
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
@@ -1459,122 +1486,6 @@ def AG_B_ROW_RS_C_COL(m, k, n, px, py):
     comm.Barrier()
 
     actual_tiles = comm.allgather((C_local, row_major_distribution_get_local_indices(py, rank)))
-    actual = assemble_matrix_from_tiles(actual_tiles)
-
-    correct = matrices_equal(expected, actual)
-
-    output = {
-        "elapsed_time": elapsed_time,
-        "correct": correct,
-        "matrices": {
-            "A": A,
-            "B": B,
-            "C": C
-        },
-        "expected": expected,
-        "actual": actual
-    }
-
-    return output
-
-def AG_B_ROW_RS_C_ROW_BROKEN(m, k, n, px, py):
-    # 14
-    # I think there are major issues with the algorithm as presented in the thesis
-    # It like just doesn't multiply anything that is correct together
-    np.random.seed(42)
-    comm = MPI.COMM_WORLD
-    size = comm.Get_size()
-    rank = comm.Get_rank()
-
-    assert m % size == 0
-    assert k % size == 0
-    assert n >= 1
-
-    A, B, C = generate_matrices(m, k ,n)
-    expected = np.matmul(A, B) + C
-
-    B_comm = remainder_communicator(comm, py, rank)
-    C_comm = nearby_rank_communicator(comm, py, rank)
-    
-    A_local = A14_distribution(A, px, py, rank)
-    B_local = pure_row_distribution(B, size, rank)
-    C_local = pure_row_distribution(C, size, rank)
-
-    print_local_matrices_on_debug_rank(A, B, C)
-    # print_local_matrices_on_debug_rank(A_local, B_local, C_local, debug_rank=0)
-
-    def algorithm(A, B, C, comm1, comm2, px, py):
-        comm1_rank = comm1.Get_rank()
-        comm2_rank = comm2.Get_rank()
-        A_col_index = rank # increments by py, gets set at the start of the outer loop
-        outer_loop_iterations = py
-        outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=True)
-        inner_loop_iterations = px
-        inner_buffer = DoubleBuffer(B, make_contiguous=True)
-
-        for i in range(outer_loop_iterations):
-            # interesting this is the same formula as in the A14 distribution
-            A_col_index = py * (rank // py) + ((rank + i) % py)
-
-            if i == 0:
-                C_curr = outer_buffer.get_current_tile()
-            else:
-                MPI.Request.Waitall([outer_receive_request, outer_send_request])
-                outer_buffer.swap()
-                C_curr = outer_buffer.get_current_tile()
-
-            for j in range(inner_loop_iterations):
-                
-                B_curr = inner_buffer.get_current_tile()
-
-                # the diagram in the thesis is missing all of the arrows for the last 4 pictures
-                if j != inner_loop_iterations - 1 or i != outer_loop_iterations - 1:
-                    inner_send_rank = (comm2_rank - 1) % comm2.Get_size()
-                    inner_receive_rank = (comm2_rank + 1) % comm2.Get_size()
-                    inner_send_request = comm2.Isend(
-                        buf=(inner_buffer.get_current_tile(), MPI_DTYPE), 
-                        dest=inner_send_rank
-                    )
-                    inner_receive_request = comm2.Irecv(
-                        buf=(inner_buffer.get_receive_buffer(), MPI_DTYPE), 
-                        source=inner_receive_rank
-                    )
-
-                A_curr = get_subtile(A, 1, px * py, 0, A_col_index)
-                C_curr = np.matmul(A_curr, B_curr) + C_curr
-                print_local_matrices_on_debug_rank(A_curr, B_curr, C_curr, debug_rank=0)
-
-                if j != inner_loop_iterations - 1 or i != outer_loop_iterations - 1:
-                    MPI.Request.Waitall([inner_send_request, inner_receive_request])
-                    inner_buffer.swap()
-
-                A_col_index = (A_col_index + py) % size
-
-
-            if i == outer_loop_iterations - 1:
-                C = C + C_curr
-            else:
-                outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
-                outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
-                outer_send_request = comm1.Isend(
-                    buf=(C_curr, MPI_DTYPE),
-                    dest=outer_send_rank
-                )
-                outer_receive_request = comm1.Irecv(
-                    buf=outer_buffer.get_receive_buffer(),
-                    source=outer_receive_rank
-                )
-
-        return C
-
-    comm.Barrier()
-    start_time = MPI.Wtime()
-    C_local = algorithm(A_local, B_local, C_local, C_comm, B_comm, px, py)
-    end_time = MPI.Wtime()
-    elapsed_time = end_time - start_time
-    comm.Barrier()
-
-    actual_tiles = comm.allgather((C_local, pure_row_distribution_get_local_indices(rank)))
     actual = assemble_matrix_from_tiles(actual_tiles)
 
     correct = matrices_equal(expected, actual)
@@ -1632,12 +1543,7 @@ def AG_B_ROW_RS_C_ROW(m, k, n, px, py):
 
         for i in range(outer_loop_iterations):
 
-            if i == 0:
-                C_curr = outer_buffer.get_current_tile()
-            else:
-                MPI.Request.Waitall([outer_receive_request, outer_send_request])
-                outer_buffer.swap()
-                C_curr = outer_buffer.get_current_tile()
+            C_temp = np.zeros(shape=C.shape, dtype=MATRIX_DTYPE)
 
             for j in range(inner_loop_iterations):
                 
@@ -1657,7 +1563,7 @@ def AG_B_ROW_RS_C_ROW(m, k, n, px, py):
                     )
 
                 A_curr = get_subtile(A, px, py, A_row_index, A_col_index)
-                C_curr = np.matmul(A_curr, B_curr) + C_curr
+                C_temp = np.matmul(A_curr, B_curr) + C_temp
                 # rank_print(f"A_row: {A_row_index}, A_col: {A_col_index}", print_rank=1)
                 # print_local_matrices_on_debug_rank(A_curr, B_curr, C_curr, debug_rank=1)
 
@@ -1666,6 +1572,15 @@ def AG_B_ROW_RS_C_ROW(m, k, n, px, py):
                     inner_buffer.swap()
 
                 A_col_index = (A_col_index + 1) % py
+
+            if i == 0:
+                C_curr = outer_buffer.get_current_tile()
+            else:
+                MPI.Request.Waitall([outer_receive_request, outer_send_request])
+                outer_buffer.swap()
+                C_curr = outer_buffer.get_current_tile()
+
+            C_curr = C_curr + C_temp
 
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
@@ -1753,6 +1668,9 @@ def RS_C_COL_RS_C_ROW(m, k, n, px, py):
                 A_curr = get_subtile(A, px, 1, A_index, 0)
                 B_curr = get_subtile(B, 1, py, 0, B_index)
 
+                # print_local_matrices_on_debug_rank(A_curr, B_curr, C_curr, debug_rank=0)
+                C_temp = np.matmul(A_curr, B_curr)
+                
                 if i == 0 and j == 0:
                     C_curr = buffer.get_current_tile()
                 else:
@@ -1760,9 +1678,8 @@ def RS_C_COL_RS_C_ROW(m, k, n, px, py):
                     buffer.swap()
                     C_curr = buffer.get_current_tile()
 
-                # print_local_matrices_on_debug_rank(A_curr, B_curr, C_curr, debug_rank=0)
-                C_curr = np.matmul(A_curr, B_curr) + C_curr
-                
+                C_curr = C_curr + C_temp
+
                 if i == outer_loop_iterations - 1 and j == inner_loop_iterations - 1:
                     C = C + C_curr
                 elif j == inner_loop_iterations - 1:
