@@ -1760,7 +1760,7 @@ def AG_A_COL(m, k, n, px, py):
         comm1_size = comm1.Get_size()
         B_index = comm1_rank
         outer_loop_iterations = comm1_size
-        buffer = DoubleBuffer(A, make_contiguous=True)
+        buffer = DoubleBuffer(A, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
 
@@ -1838,7 +1838,7 @@ def AG_A_ROW(m, k, n, px, py):
         comm1_size = comm1.Get_size()
         C_index = comm1_rank
         outer_loop_iterations = comm1_size
-        buffer = DoubleBuffer(A, make_contiguous=True)
+        buffer = DoubleBuffer(A, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
 
@@ -1918,7 +1918,7 @@ def AG_B_COL(m, k, n, px, py):
         comm1_size = comm1.Get_size()
         C_index = comm1_rank
         outer_loop_iterations = comm1_size
-        buffer = DoubleBuffer(B, make_contiguous=True)
+        buffer = DoubleBuffer(B, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
 
@@ -1998,7 +1998,7 @@ def AG_B_ROW(m, k, n, px, py):
         comm1_size = comm1.Get_size()
         A_index = comm1_rank
         outer_loop_iterations = comm1_size
-        buffer = DoubleBuffer(B, make_contiguous=True)
+        buffer = DoubleBuffer(B, make_contiguous=False)
 
         for i in range(outer_loop_iterations):
 
@@ -2098,7 +2098,7 @@ def RS_C_COL(m, k, n, px, py):
                 send_rank = (comm1_rank + 1) % comm1_size
                 receive_rank = (comm1_rank - 1) % comm1_size
                 send_request = comm1.Isend(
-                    buf=(np.ascontiguousarray(C_curr, dtype=MATRIX_DTYPE), MPI_DTYPE), dest=send_rank
+                    buf=(C_curr, MPI_DTYPE), dest=send_rank
                 )
                 receive_request = comm1.Irecv(
                     buf=(buffer, MPI_DTYPE), source=receive_rank
@@ -2181,7 +2181,7 @@ def RS_C_ROW(m, k, n, px, py):
                 send_rank = (comm1_rank + 1) % comm1_size
                 receive_rank = (comm1_rank - 1) % comm1_size
                 send_request = comm1.Isend(
-                    buf=(np.ascontiguousarray(C_curr, dtype=MATRIX_DTYPE), MPI_DTYPE), dest=send_rank
+                    buf=(C_curr, MPI_DTYPE), dest=send_rank
                 )
                 receive_request = comm1.Irecv(
                     buf=(buffer, MPI_DTYPE), source=receive_rank
