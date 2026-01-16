@@ -2074,7 +2074,7 @@ def RS_C_COL(m, k, n, px, py):
     def algorithm(A, B, C, comm1, px, py):
         comm1_rank = comm1.Get_rank()
         comm1_size = comm1.Get_size()
-        B_index = (comm1_rank - 1) % comm1_size
+        B_index = (comm1_rank + 1) % comm1_size
         outer_loop_iterations = comm1_size
         buffer = np.empty(shape=C.shape, dtype=MATRIX_DTYPE)
 
@@ -2095,8 +2095,8 @@ def RS_C_COL(m, k, n, px, py):
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
             else:
-                send_rank = (comm1_rank + 1) % comm1_size
-                receive_rank = (comm1_rank - 1) % comm1_size
+                send_rank = (comm1_rank - 1) % comm1_size
+                receive_rank = (comm1_rank + 1) % comm1_size
                 send_request = comm1.Isend(
                     buf=(C_curr, MPI_DTYPE), dest=send_rank
                 )
@@ -2104,7 +2104,7 @@ def RS_C_COL(m, k, n, px, py):
                     buf=(buffer, MPI_DTYPE), source=receive_rank
                 )
 
-            B_index = (B_index - 1) % comm1_size
+            B_index = (B_index + 1) % comm1_size
 
         return C
 
@@ -2157,7 +2157,7 @@ def RS_C_ROW(m, k, n, px, py):
     def algorithm(A, B, C, comm1, px, py):
         comm1_rank = comm1.Get_rank()
         comm1_size = comm1.Get_size()
-        A_index = (comm1_rank - 1) % comm1_size
+        A_index = (comm1_rank + 1) % comm1_size
         outer_loop_iterations = comm1_size
         buffer = np.empty(shape=C.shape, dtype=MATRIX_DTYPE)
 
@@ -2178,8 +2178,8 @@ def RS_C_ROW(m, k, n, px, py):
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
             else:
-                send_rank = (comm1_rank + 1) % comm1_size
-                receive_rank = (comm1_rank - 1) % comm1_size
+                send_rank = (comm1_rank - 1) % comm1_size
+                receive_rank = (comm1_rank + 1) % comm1_size
                 send_request = comm1.Isend(
                     buf=(C_curr, MPI_DTYPE), dest=send_rank
                 )
@@ -2187,7 +2187,7 @@ def RS_C_ROW(m, k, n, px, py):
                     buf=(buffer, MPI_DTYPE), source=receive_rank
                 )
 
-            A_index = (A_index - 1) % comm1_size
+            A_index = (A_index + 1) % comm1_size
 
         return C
 
