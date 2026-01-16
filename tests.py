@@ -19,7 +19,14 @@ from gemm import (
     AG_B_COL_RS_C_ROW,
     AG_B_ROW_RS_C_COL,
     AG_B_ROW_RS_C_ROW,
-    RS_C_COL_RS_C_ROW
+    RS_C_COL_RS_C_ROW,
+
+    AG_A_COL,
+    AG_A_ROW,
+    AG_B_COL,
+    AG_B_ROW,
+    RS_C_COL,
+    RS_C_ROW
 )
 
 class MinGemmDimension(Enum):
@@ -132,6 +139,13 @@ GEMM_TESTING_CONFIGURATIONS = {
     "AG_B_ROW_RS_C_COL": TestGemmConfiguration(AG_B_ROW_RS_C_COL, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY), # 13
     "AG_B_ROW_RS_C_ROW": TestGemmConfiguration(AG_B_ROW_RS_C_ROW, MinGemmDimension.SIZE, MinGemmDimension.SIZE, MinGemmDimension.ONE), # 14
     "RS_C_COL_RS_C_ROW": TestGemmConfiguration(RS_C_COL_RS_C_ROW, MinGemmDimension.PX, MinGemmDimension.SIZE, MinGemmDimension.PY), # 15
+
+    "AG_A_COL": TestGemmConfiguration(AG_A_COL, MinGemmDimension.ONE, MinGemmDimension.SIZE, MinGemmDimension.SIZE),
+    "AG_A_ROW": TestGemmConfiguration(AG_A_ROW, MinGemmDimension.SIZE, MinGemmDimension.ONE, MinGemmDimension.SIZE),
+    "AG_B_COL": TestGemmConfiguration(AG_B_COL, MinGemmDimension.SIZE, MinGemmDimension.ONE, MinGemmDimension.SIZE),
+    "AG_B_ROW": TestGemmConfiguration(AG_B_ROW, MinGemmDimension.SIZE, MinGemmDimension.SIZE, MinGemmDimension.ONE),
+    "RS_C_COL": TestGemmConfiguration(RS_C_COL, MinGemmDimension.ONE, MinGemmDimension.SIZE, MinGemmDimension.SIZE),
+    "RS_C_ROW": TestGemmConfiguration(RS_C_ROW, MinGemmDimension.SIZE, MinGemmDimension.SIZE, MinGemmDimension.ONE),
 }
 
 def parse_args():

@@ -19,7 +19,14 @@ from gemm import (
     AG_B_COL_RS_C_ROW,
     AG_B_ROW_RS_C_COL,
     AG_B_ROW_RS_C_ROW,
-    RS_C_COL_RS_C_ROW
+    RS_C_COL_RS_C_ROW,
+
+    AG_A_COL,
+    AG_A_ROW,
+    AG_B_COL,
+    AG_B_ROW,
+    RS_C_COL,
+    RS_C_ROW
 )
 
 
@@ -38,7 +45,14 @@ gemm_algorithms = {
     "AG_B_COL_RS_C_ROW": AG_B_COL_RS_C_ROW,
     "AG_B_ROW_RS_C_COL": AG_B_ROW_RS_C_COL,
     "AG_B_ROW_RS_C_ROW": AG_B_ROW_RS_C_ROW,
-    "RS_C_COL_RS_C_ROW": RS_C_COL_RS_C_ROW
+    "RS_C_COL_RS_C_ROW": RS_C_COL_RS_C_ROW,
+
+    "AG_A_COL": AG_A_COL,
+    "AG_A_ROW": AG_A_ROW,
+    "AG_B_COL": AG_B_COL,
+    "AG_B_ROW": AG_B_ROW,
+    "RS_C_COL": RS_C_COL,
+    "RS_C_ROW": RS_C_ROW
 }
 
 def parse_arguments():
