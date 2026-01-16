@@ -16,7 +16,7 @@ def get_subtile(tile, rows, columns, i, j):
     return tile[start_row : end_row, start_col : end_col]
 
 
-def get_subtile_shape(tile, rows, columns, i, j):
+def get_subtile_shape(tile, rows, columns):
     subtile_rows = tile.shape[0] // rows
     subtile_columns = tile.shape[1] // columns
 

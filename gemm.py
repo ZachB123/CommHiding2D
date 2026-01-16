@@ -166,7 +166,7 @@ def AG_A_COL_AG_B_COL(m, k, n, px, py):
         outer_loop_iterations = py
         outer_buffer = DoubleBuffer(A, make_contiguous=False)
         inner_loop_iterations = px
-        inner_buffer = np.empty(shape=get_subtile_shape(B, py, 1, B_index, 0), dtype=MATRIX_DTYPE)
+        inner_buffer = np.empty(shape=get_subtile_shape(B, py, 1), dtype=MATRIX_DTYPE)
 
         for i in range(outer_loop_iterations):
 
@@ -271,9 +271,9 @@ def AG_A_COL_AG_B_ROW(m, k, n, px, py):
         B_index = comm2_rank
         A_index = comm1_rank
         outer_loop_iterations = px
-        outer_buffer = np.empty(shape=get_subtile_shape(B, py, 1, B_index, 0), dtype=MATRIX_DTYPE)#DoubleBuffer(get_subtile(B, py, 1, outer_index, 0))
+        outer_buffer = np.empty(shape=get_subtile_shape(B, py, 1), dtype=MATRIX_DTYPE)#DoubleBuffer(get_subtile(B, py, 1, outer_index, 0))
         inner_loop_iterations = py
-        inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px, 0, A_index), dtype=MATRIX_DTYPE)#DoubleBuffer(get_subtile(A, 1, px, 0, inner_index))
+        inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px), dtype=MATRIX_DTYPE)#DoubleBuffer(get_subtile(A, 1, px, 0, inner_index))
 
         for i in range(outer_loop_iterations):
 
@@ -500,7 +500,7 @@ def AG_A_COL_RS_C_ROW(m, k, n, px, py):
         outer_loop_iterations = px
         outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=True)
         inner_loop_iterations = py
-        inner_buffer = np.empty(shape=get_subtile_shape(A, px, 1, A_index, 0), dtype=MATRIX_DTYPE)
+        inner_buffer = np.empty(shape=get_subtile_shape(A, px, 1), dtype=MATRIX_DTYPE)
 
         for i in range(outer_loop_iterations):
 
@@ -727,7 +727,7 @@ def AG_A_ROW_AG_B_ROW(m, k, n, px, py):
         outer_loop_iterations = px
         outer_buffer = DoubleBuffer(B, make_contiguous=False)
         inner_loop_iterations = py
-        inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px, 0, A_index), dtype=MATRIX_DTYPE)
+        inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px), dtype=MATRIX_DTYPE)
 
         for i in range(outer_loop_iterations):
             
@@ -831,7 +831,7 @@ def AG_A_ROW_RS_C_COL(m, k, n, px, py):
         outer_loop_iterations = px
         outer_buffer = DoubleBuffer(A, make_contiguous=False)
         inner_loop_iterations = py
-        inner_buffer = np.empty(shape=get_subtile_shape(C, px, 1, C_index, 0), dtype=MATRIX_DTYPE)
+        inner_buffer = np.empty(shape=get_subtile_shape(C, px, 1), dtype=MATRIX_DTYPE)
 
         for i in range(outer_loop_iterations):
 
@@ -854,7 +854,7 @@ def AG_A_ROW_RS_C_COL(m, k, n, px, py):
                 C_temp = np.matmul(A_curr, B_curr)
 
                 if j == 0:
-                    C_curr = np.zeros(shape=get_subtile_shape(C, px, 1, C_index, 0), dtype=MATRIX_DTYPE)            
+                    C_curr = np.zeros(shape=get_subtile_shape(C, px, 1), dtype=MATRIX_DTYPE)            
                 else:
                     MPI.Request.Waitall([inner_receive_request, inner_send_request])
                     C_curr = inner_buffer
@@ -943,10 +943,8 @@ def AG_A_ROW_RS_C_ROW(m, k, n, px, py):
         C_index = comm2_rank
         outer_loop_iterations = px
         outer_buffer = DoubleBuffer(np.zeros(C.shape), make_contiguous=True)
-        # outer_buffer = np.empty(shape=get_subtile_shape(C, py, 1, C_index, 0))
         inner_loop_iterations = py
-        inner_buffer = np.empty(shape=get_subtile_shape(A, px, 1, A_index, 0), dtype=MATRIX_DTYPE)
-        # add to big C block what we add with C at the end to return
+        inner_buffer = np.empty(shape=get_subtile_shape(A, px, 1), dtype=MATRIX_DTYPE)
 
         B_curr = B
 
@@ -1175,7 +1173,7 @@ def AG_B_COL_RS_C_COL(m, k, n, px, py):
         outer_buffer = DoubleBuffer(np.zeros(shape=C.shape), make_contiguous=True)
         inner_loop_iterations = px
         # inner_buffer = DoubleBuffer(B, make_contiguous=False)
-        inner_buffer = np.empty(shape=get_subtile_shape(B, 1, py, 0, B_index), dtype=MATRIX_DTYPE)
+        inner_buffer = np.empty(shape=get_subtile_shape(B, 1, py), dtype=MATRIX_DTYPE)
 
         A_curr = A
 
@@ -1301,7 +1299,7 @@ def AG_B_COL_RS_C_ROW(m, k, n, px, py):
         outer_loop_iterations = py
         outer_buffer = DoubleBuffer(B, make_contiguous=False)
         inner_loop_iterations = px
-        inner_buffer = np.empty(shape=get_subtile_shape(C, 1, py, 0, 0), dtype=MATRIX_DTYPE)
+        inner_buffer = np.empty(shape=get_subtile_shape(C, 1, py), dtype=MATRIX_DTYPE)
 
         for i in range(outer_loop_iterations):
             B_curr = outer_buffer.get_current_tile()
@@ -1325,7 +1323,7 @@ def AG_B_COL_RS_C_ROW(m, k, n, px, py):
                 C_temp = np.matmul(A_curr, B_curr)
 
                 if j == 0:
-                    C_curr = np.zeros(shape=get_subtile_shape(C, 1, py, 0, 0), dtype=MATRIX_DTYPE)          
+                    C_curr = np.zeros(shape=get_subtile_shape(C, 1, py), dtype=MATRIX_DTYPE)          
                 else:
                     MPI.Request.Waitall([inner_receive_request, inner_send_request])
                     C_curr = inner_buffer
@@ -1415,7 +1413,7 @@ def AG_B_ROW_RS_C_COL(m, k, n, px, py):
         outer_loop_iterations = py
         outer_buffer = DoubleBuffer(np.zeros(shape=C.shape, dtype=MATRIX_DTYPE), make_contiguous=False)
         inner_loop_iterations = px
-        inner_buffer = np.empty(shape=get_subtile_shape(B, 1, py, 0, 0), dtype=MATRIX_DTYPE)
+        inner_buffer = np.empty(shape=get_subtile_shape(B, 1, py), dtype=MATRIX_DTYPE)
 
         for i in range(outer_loop_iterations):
             B_curr = get_subtile(B, 1, py, 0, B_index)
