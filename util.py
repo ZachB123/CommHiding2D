@@ -1,6 +1,7 @@
 import numpy as np
+from mpi4py import MPI
 
-from constants import MATRIX_DTYPE
+from constants import MATRIX_DTYPE, MPI_DTYPE
 
 def generate_matrix(row, col, min, max):
     """
@@ -80,3 +81,55 @@ def assemble_matrix_from_tiles(tiles):
         matrix_rows.append(np.hstack(current_row))
     
     return np.vstack(matrix_rows) 
+
+
+def mpi_setup():
+    np.random.seed(42)
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    return comm, size, rank
+
+
+def call_algorithm(algorithm, comm, *args):
+    comm.Barrier()
+    start_time = MPI.Wtime()
+    C_local = algorithm(*args)
+    end_time = MPI.Wtime()
+    elapsed_time = end_time - start_time
+    comm.Barrier()
+
+    return C_local, elapsed_time
+
+
+def create_algorithm_output(elapsed_time, correct, A, B, C, expected, actual):
+    return {
+        "elapsed_time": elapsed_time,
+        "correct": correct,
+        "matrices": {
+            "A": A,
+            "B": B,
+            "C": C
+        },
+        "expected": expected,
+        "actual": actual
+    }
+
+
+def send(comm, send_buffer, receive_buffer):
+    send_rank = (comm.Get_rank() - 1) % comm.Get_size()
+    receive_rank = (comm.Get_rank() + 1) % comm.Get_size()
+    send_request = comm.Isend(
+        buf=(send_buffer, MPI_DTYPE), dest=send_rank
+    )
+    receive_request = comm.Irecv(
+        buf=(receive_buffer, MPI_DTYPE), source=receive_rank
+    )
+    return send_request, receive_request
+
+
+def receive(requests, action):
+    MPI.Request.Waitall(requests)
+    if action is not None:
+        return action()
