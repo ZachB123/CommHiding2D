@@ -102,7 +102,3 @@ def A9_distribution(matrix, px, py, rank):
 def A14_distribution(matrix, px, py, rank):
     row_index = py * (rank // py) + ((rank + 1) % py)
     return get_subtile(matrix, px * py, 1, row_index, 0)
-
-# def C4_distribution(matrix, px, py, rank):
-#     column_index = (rank // py) * py + (((rank % py) + 1) % py)
-#     return get_subtile(matrix, 1, px * py, 0, column_index)

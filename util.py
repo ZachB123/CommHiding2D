@@ -1,7 +1,9 @@
+from abc import ABC, abstractmethod
 import numpy as np
 from mpi4py import MPI
 
 from constants import MATRIX_DTYPE, MPI_DTYPE
+from enums import CommunicationDirection
 
 def generate_matrix(row, col, min, max):
     """
@@ -33,7 +35,21 @@ def generate_matrices(m, k, n):
 def matrices_equal(A, B):
     return np.all(np.isclose(A, B))
 
-class DoubleBuffer:
+class Buffer(ABC):
+    @abstractmethod
+    def get_send_tile(self, matrix_to_send=None):
+        pass
+    @abstractmethod
+    def get_receive_tile(self):
+        pass
+    @abstractmethod
+    def on_receive(self):
+        pass
+    @abstractmethod
+    def get_buffer(self):
+        pass
+
+class DoubleBuffer(Buffer):
     def __init__(self, initial_value, make_contiguous=False):
         if make_contiguous:
             self.first_buffer = np.ascontiguousarray(initial_value, dtype=MATRIX_DTYPE)
@@ -43,6 +59,26 @@ class DoubleBuffer:
         self.second_buffer = np.empty(initial_value.shape, dtype=MATRIX_DTYPE)
         self.current_buffer = self.first_buffer
 
+    def get_send_tile(self, matrix_to_send=None):
+        return self.current_buffer
+    
+    def get_receive_tile(self):
+        if self.current_buffer is self.first_buffer:
+            return self.second_buffer
+        else:
+            return self.first_buffer
+        
+    def on_receive(self):
+        return lambda: self.swap()
+    
+    def get_buffer(self):
+        return self.current_buffer
+
+    def __repr__(self):
+        return "DoubleBuffer"
+
+    # these methods are kept in for backwards compatibility
+    # TODO remove the below methods
     def get_receive_buffer(self):
         # this is what we can use in the mpi receive request
         # we receive into not the current buffer then swap it
@@ -61,8 +97,27 @@ class DoubleBuffer:
             self.current_buffer = self.first_buffer
 
 
-def assemble_matrix_from_tiles(tiles):
+class AccumulationBuffer(Buffer):
+    def __init__(self, matrix):
+        self.buffer = np.empty(shape=matrix.shape, dtype=MATRIX_DTYPE)
+
+    def get_send_tile(self, matrix_to_send=None):
+        return matrix_to_send
+
+    def get_receive_tile(self):
+        return self.buffer
+
+    def on_receive(self):
+        return lambda: self.buffer
     
+    def get_buffer(self):
+        return self.buffer # maybe make a new buffer here idk
+
+    def __repr__(self):
+        return "AccumulationBuffer"
+
+
+def assemble_matrix_from_tiles(tiles):
     sorted_tiles = sorted(tiles, key=lambda x: (x[1][0], x[1][1]))
     
     matrix_rows = []
@@ -117,9 +172,13 @@ def create_algorithm_output(elapsed_time, correct, A, B, C, expected, actual):
     }
 
 
-def send(comm, send_buffer, receive_buffer):
-    send_rank = (comm.Get_rank() - 1) % comm.Get_size()
-    receive_rank = (comm.Get_rank() + 1) % comm.Get_size()
+def send(comm, send_buffer, receive_buffer, direction=CommunicationDirection.SEND_PREV):
+    if direction == CommunicationDirection.SEND_PREV:
+        send_rank = (comm.Get_rank() - 1) % comm.Get_size()
+        receive_rank = (comm.Get_rank() + 1) % comm.Get_size()
+    else:
+        send_rank = (comm.Get_rank() + 1) % comm.Get_size()
+        receive_rank = (comm.Get_rank() - 1) % comm.Get_size() 
     send_request = comm.Isend(
         buf=(send_buffer, MPI_DTYPE), dest=send_rank
     )

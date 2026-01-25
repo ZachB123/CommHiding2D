@@ -3,9 +3,9 @@ import numpy as np
 
 from communicator import nearby_rank_communicator, remainder_communicator
 from constants import MPI_DTYPE, MATRIX_DTYPE
-from debug import parallel_print, print_full_matrices, print_local_matrices, print_local_matrices_on_debug_rank, print_ranks, rank_print
-from distribution import A14_distribution, A9_distribution, C11_get_local_indices, block_cyclic_distribution, col_major_distribution, col_major_distribution_get_local_indices, get_subtile, get_subtile_shape, pure_column_distribution, pure_column_distribution_get_local_indices, pure_row_distribution, pure_row_distribution_get_local_indices, row_major_distribution, row_major_distribution_get_local_indices, set_subtile, alternating_column_distribution, alternating_row_distribution
-from util import DoubleBuffer, assemble_matrix_from_tiles, generate_matrices, generate_matrix, matrices_equal
+# from debug import parallel_print, print_full_matrices, print_local_matrices, print_local_matrices_on_debug_rank, print_ranks, rank_print
+from distribution import A9_distribution, C11_get_local_indices, block_cyclic_distribution, col_major_distribution, col_major_distribution_get_local_indices, get_subtile, get_subtile_shape, pure_column_distribution, pure_column_distribution_get_local_indices, pure_row_distribution, pure_row_distribution_get_local_indices, row_major_distribution, row_major_distribution_get_local_indices, set_subtile, alternating_column_distribution, alternating_row_distribution
+from util import DoubleBuffer, assemble_matrix_from_tiles, generate_matrices, matrices_equal
 
 """
 How to read the functions

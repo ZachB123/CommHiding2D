@@ -3,10 +3,10 @@ import numpy as np
 import argparse
 
 from constants import USE_REFACTORED_ALGORITHMS
-from debug import rank_print, parallel_print
+from debug import rank_print
 
 if USE_REFACTORED_ALGORITHMS:
-    from gemm_refactored import (
+    from refactored_gemm import (
         AG_A_COL_AG_A_ROW,
         AG_A_COL_AG_B_COL,
         AG_A_COL_AG_B_ROW,

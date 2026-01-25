@@ -1,5 +1,3 @@
-
-
 def nearby_rank_communicator(comm, size_of_groups, rank):
     # GROUPS THE NEARBY RANK NUMBERS TOGETHER
     # use if you want like 0,1 2,3 4,5 to be groups etc
