@@ -1163,56 +1163,6 @@ def RS_C_COL_RS_C_ROW(m, k, n, px, py):
 
 
 # 1d algorithms
-# def AG_A_COL(m, k, n, px, py):
-#     comm, size, rank = mpi_setup()
-
-#     assert m >= 1
-#     assert k % size == 0
-#     assert n % size == 0
-
-#     A, B, C = generate_matrices(m, k, n)
-#     expected = np.matmul(A, B) + C
-
-#     A_comm = comm
-
-#     A_local = pure_column_distribution(A, size, rank)
-#     B_local = pure_column_distribution(B, size, rank)
-#     C_local = pure_column_distribution(C, size, rank)
-
-#     def algorithm(A, B, C, comm1, px, py):
-#         comm1_rank = comm1.Get_rank()
-#         comm1_size = comm1.Get_size()
-#         B_index = comm1_rank
-#         outer_loop_iterations = comm1_size
-#         buffer = DoubleBuffer(A, make_contiguous=False)
-
-#         for i in range(outer_loop_iterations):
-
-#             if i != outer_loop_iterations - 1:
-#                 send_request, receive_request = send(comm1, buffer.get_current_tile(), buffer.get_receive_buffer())
-
-#             A_curr = buffer.get_current_tile()
-#             B_curr = get_subtile(B, size, 1, B_index, 0)
-
-#             C = C + np.matmul(A_curr, B_curr)
-
-#             if i != outer_loop_iterations - 1:
-#                 receive([send_request, receive_request], lambda: buffer.swap())
-
-#             B_index = (B_index + 1) % comm1_size
-
-#         return C
-
-#     C_local, elapsed_time = call_algorithm(algorithm, comm, A_local, B_local, C_local, A_comm, px, py)
-
-#     actual_tiles = comm.allgather((C_local, pure_column_distribution_get_local_indices(rank)))
-#     actual = assemble_matrix_from_tiles(actual_tiles)
-
-#     correct = matrices_equal(expected, actual)
-
-#     return create_algorithm_output(elapsed_time, correct, A, B, C, expected, actual)
-
-
 def AG_A_COL(m, k, n, px, py):
     comm, size, rank = mpi_setup()
 
@@ -1239,7 +1189,7 @@ def AG_A_COL(m, k, n, px, py):
         for i in range(outer_loop_iterations):
 
             if i != outer_loop_iterations - 1:
-                send_request, receive_request = send(comm1, buffer.get_current_tile(), buffer.get_receive_buffer(), direction=CommunicationDirection.SEND_NEXT)
+                send_request, receive_request = send(comm1, buffer.get_current_tile(), buffer.get_receive_buffer())
 
             A_curr = buffer.get_current_tile()
             B_curr = get_subtile(B, size, 1, B_index, 0)
@@ -1249,7 +1199,7 @@ def AG_A_COL(m, k, n, px, py):
             if i != outer_loop_iterations - 1:
                 receive([send_request, receive_request], lambda: buffer.swap())
 
-            B_index = (B_index - 1) % comm1_size
+            B_index = (B_index + 1) % comm1_size
 
         return C
 
@@ -1417,59 +1367,6 @@ def AG_B_ROW(m, k, n, px, py):
     return create_algorithm_output(elapsed_time, correct, A, B, C, expected, actual)
 
 
-# def RS_C_COL(m, k, n, px, py):
-#     comm, size, rank = mpi_setup()
-
-#     assert m >= 1
-#     assert k % size == 0
-#     assert n % size == 0
-
-#     A, B, C = generate_matrices(m, k, n)
-#     expected = np.matmul(A, B) + C
-
-#     C_comm = comm
-
-#     A_local = pure_column_distribution(A, size, rank)
-#     B_local = pure_row_distribution(B, size, rank)
-#     C_local = pure_column_distribution(C, size, rank)
-
-#     def algorithm(A, B, C, comm1, px, py):
-#         comm1_rank = comm1.Get_rank()
-#         comm1_size = comm1.Get_size()
-#         B_index = (comm1_rank + 1) % comm1_size
-#         outer_loop_iterations = comm1_size
-#         buffer = np.empty(shape=C.shape, dtype=MATRIX_DTYPE)
-
-#         for i in range(outer_loop_iterations):
-
-#             B_curr = get_subtile(B, 1, size, 0, B_index)
-            
-#             C_temp = np.matmul(A, B_curr)
-
-#             if i == 0:
-#                 C_curr = np.zeros(shape=C.shape, dtype=MATRIX_DTYPE)
-#             else:
-#                 C_curr = receive([receive_request, send_request], lambda: buffer)
-
-#             C_curr = C_curr + C_temp
-
-#             if i == outer_loop_iterations - 1:
-#                 C = C + C_curr
-#             else:
-#                 send_request, receive_request = send(comm1, C_curr, buffer)
-
-#             B_index = (B_index + 1) % comm1_size
-
-#         return C
-
-#     C_local, elapsed_time = call_algorithm(algorithm, comm, A_local, B_local, C_local, C_comm, px, py)
-
-#     actual_tiles = comm.allgather((C_local, pure_column_distribution_get_local_indices(rank)))
-#     actual = assemble_matrix_from_tiles(actual_tiles)
-
-#     correct = matrices_equal(expected, actual)
-
-#     return create_algorithm_output(elapsed_time, correct, A, B, C, expected, actual)
 def RS_C_COL(m, k, n, px, py):
     comm, size, rank = mpi_setup()
 
@@ -1489,7 +1386,7 @@ def RS_C_COL(m, k, n, px, py):
     def algorithm(A, B, C, comm1, px, py):
         comm1_rank = comm1.Get_rank()
         comm1_size = comm1.Get_size()
-        B_index = (comm1_rank - 1) % comm1_size
+        B_index = (comm1_rank + 1) % comm1_size
         outer_loop_iterations = comm1_size
         buffer = np.empty(shape=C.shape, dtype=MATRIX_DTYPE)
 
@@ -1509,9 +1406,9 @@ def RS_C_COL(m, k, n, px, py):
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
             else:
-                send_request, receive_request = send(comm1, C_curr, buffer, direction=CommunicationDirection.SEND_NEXT)
+                send_request, receive_request = send(comm1, C_curr, buffer)
 
-            B_index = (B_index - 1) % comm1_size
+            B_index = (B_index + 1) % comm1_size
 
         return C
 

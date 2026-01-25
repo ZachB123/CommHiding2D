@@ -258,3 +258,11 @@ if __name__ == "__main__":
     output = gemm.setup_and_run(6,3,3,3,1)
     output_string = f"Runtime: {output.get('elapsed_time')}, Correct: {output.get('correct')}\nExpected:\n{output.get('expected')}\nActual:\n{output.get('actual')}"
     rank_print(output_string)
+
+
+# 2d plan
+# AG_A_COL_AG_B_ROW example for how I want the interface to look
+# ag_a_col = Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV) # could also be SEND_NEXT shouldn't matter
+# ag_b_row = Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)
+# gemm2d = Gemm2D(outer=ag_a_col, inner=ag_b_row)
+# output = gemm2d.setup_and_run(...)
