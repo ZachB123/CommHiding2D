@@ -194,33 +194,32 @@ def AG_A_COL_AG_B_ROW(m, k, n, px, py):
         B_index = comm2_rank
         A_index = comm1_rank
         outer_loop_iterations = px
-        outer_buffer = np.empty(shape=get_subtile_shape(B, py, 1), dtype=MATRIX_DTYPE)
+        outer_buffer = DoubleBuffer(B, make_contiguous=False)
         inner_loop_iterations = py
         inner_buffer = np.empty(shape=get_subtile_shape(A, 1, px), dtype=MATRIX_DTYPE)
 
         for i in range(outer_loop_iterations):
+            B_tile = outer_buffer.get_current_tile()
+
+            if i != outer_loop_iterations - 1:
+                outer_send_request, outer_receive_request = send(comm1, np.ascontiguousarray(B_tile, dtype=MATRIX_DTYPE), outer_buffer.get_receive_buffer())
 
             for j in range(inner_loop_iterations):
-
                 A_curr = get_subtile(A, 1, px, 0, A_index)
 
                 if j != inner_loop_iterations - 1:
                     inner_send_request, inner_receive_request = send(comm2, np.ascontiguousarray(A_curr, dtype=MATRIX_DTYPE), inner_buffer)
 
-                B_curr = get_subtile(B, py, 1, B_index, 0)
-
-                if i != outer_loop_iterations - 1:
-                    outer_send_request, outer_receive_request = send(comm1, B_curr, outer_buffer)
-
+                B_curr = get_subtile(B_tile, py, 1, B_index, 0)
                 C = np.matmul(A_curr, B_curr) + C
 
                 if j != inner_loop_iterations - 1:
                     receive([inner_send_request, inner_receive_request], lambda: set_subtile(A, inner_buffer, 1, px, 0, A_index))
 
-                if i != outer_loop_iterations - 1:
-                    receive([outer_send_request, outer_receive_request], lambda: set_subtile(B, outer_buffer, py, 1, B_index, 0))
-
                 B_index = (B_index + 1) % py
+
+            if i != outer_loop_iterations - 1:
+                receive([outer_send_request, outer_receive_request], lambda: outer_buffer.swap())
 
             A_index = (A_index + 1) % px
 
@@ -833,16 +832,7 @@ def AG_B_COL_RS_C_COL(m, k, n, px, py):
             if i == outer_loop_iterations - 1:
                 C = C + C_curr
             else:
-                outer_send_rank = (comm1_rank - 1) % comm1.Get_size()
-                outer_receive_rank = (comm1_rank + 1) % comm1.Get_size()
-                outer_send_request = comm1.Isend(
-                    buf=(C_curr, MPI_DTYPE), 
-                    dest=outer_send_rank
-                )
-                outer_receive_request = comm1.Irecv(
-                    buf=(outer_buffer.get_receive_buffer(), MPI_DTYPE), 
-                    source=outer_receive_rank
-                )       
+                outer_send_request, outer_receive_request = send(comm1, C_curr, outer_buffer.get_receive_buffer())   
 
             B_index = (B_index + 1) % py
 

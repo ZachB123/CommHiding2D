@@ -4,3 +4,4 @@
 .vscode
 all_deps.py
 deps.svg
+.DS_Store
