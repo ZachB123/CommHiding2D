@@ -1,6 +1,6 @@
 /venv
 /.pytest_cache
 /__pycache__
-
+.vscode
 all_deps.py
 deps.svg
