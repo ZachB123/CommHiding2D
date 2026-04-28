@@ -286,7 +286,7 @@ _A, _B, _C = MatrixCommunicated.A, MatrixCommunicated.B, MatrixCommunicated.C
 _COL, _ROW = SubtileScheme.COL, SubtileScheme.ROW
 
 
-# --- Parameterized 2D inner loop configs ---
+# Parameterized 2D inner loop configs
 # Keys are ordered tuples ((outer_matrix, outer_subtile), (inner_matrix, inner_subtile))
 # First element = outer loop type, second = inner loop type.
 
@@ -841,7 +841,7 @@ def _make_compute_fn(alg_key, A, B, C, inner_comm, inner_size, inner_rank,
 
     return compute_fn
 
-# --- Algorithm configuration dictionary ---
+# Algorithm configuration dictionary
 # Keyed by ordered tuples ((outer_matrix, outer_subtile), (inner_matrix, inner_subtile))
 # First element = outer loop type, second = inner loop type.
 
@@ -1058,7 +1058,7 @@ GEMM_2D_ALGORITHMS = {
         'make_compute_fn': lambda *args: _make_compute_fn(((_C, _COL), (_C, _ROW)), *args),
     },
 
-    # === Reversed algorithm entries ===
+    # Reversed algorithm entries
     # R1: outer=AG_A_ROW, inner=AG_A_COL (reverse of Alg 1)
     ((_A, _ROW), (_A, _COL)): {
         'group_param_is_py': False,  # px

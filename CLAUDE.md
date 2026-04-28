@@ -4,8 +4,6 @@ The background reading is in CommHidingThesis.pdf, this is very important to und
 
 Be very cautious about what programs you run and make sure you force exit them after a short period of time as it is very easy for tests to get completely out of hand and take several hours to finish running.
 
-make a file called progress.txt where you periodically keep track of what you have actually accomplished and what percent you are to being done with the 2d composed algorithm creator. 
-
 ## Commands
 
 **Run tests (all algorithms, specific process count):**
