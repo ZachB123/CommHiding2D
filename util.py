@@ -3,6 +3,7 @@ import numpy as np
 from mpi4py import MPI
 
 from constants import MATRIX_DTYPE, MPI_DTYPE
+from distribution import get_subtile, get_subtile_shape, set_subtile
 from enums import CommunicationDirection
 
 def generate_matrix(row, col, min, max):
@@ -95,6 +96,32 @@ class DoubleBuffer(Buffer):
             self.current_buffer = self.second_buffer
         else:
             self.current_buffer = self.first_buffer
+
+
+class SubtileBuffer(Buffer):
+    def __init__(self, matrix, rows, cols, row_idx, col_idx, needs_contiguous=False):
+        self.matrix = matrix
+        self.rows, self.cols = rows, cols
+        self.row_idx, self.col_idx = row_idx, col_idx
+        self.needs_contiguous = needs_contiguous
+        self.recv_buffer = np.empty(shape=get_subtile_shape(matrix, rows, cols), dtype=MATRIX_DTYPE)
+
+    def get_send_tile(self, matrix_to_send=None):
+        tile = get_subtile(self.matrix, self.rows, self.cols, self.row_idx, self.col_idx)
+        return np.ascontiguousarray(tile, dtype=MATRIX_DTYPE) if self.needs_contiguous else tile
+
+    def get_receive_tile(self):
+        return self.recv_buffer
+
+    def on_receive(self):
+        return lambda: set_subtile(self.matrix, self.recv_buffer,
+                                   self.rows, self.cols, self.row_idx, self.col_idx)
+
+    def get_buffer(self):
+        return get_subtile(self.matrix, self.rows, self.cols, self.row_idx, self.col_idx)
+
+    def __repr__(self):
+        return f"SubtileBuffer({self.rows}x{self.cols} at [{self.row_idx},{self.col_idx}])"
 
 
 class AccumulationBuffer(Buffer):

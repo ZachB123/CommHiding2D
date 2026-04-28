@@ -1,0 +1,27 @@
+## Progress: 2D Composed GEMM Algorithm Library
+
+**Status: 100% COMPLETE — all 120 tests pass**
+
+### Completed Work
+
+All 15 base algorithm configurations (Alg 1–15) plus 15 reversed variants (R1–R15, but
+R15 was already handled) are implemented in `composed_gemm.py`. The full test suite
+(30 random-parameter iterations × 4 direction variants = 120 tests per algorithm,
+across all factor-pairs of 6 MPI processes) passes with `mpirun -n 6 python tests.py`.
+
+### Key Files
+
+- `composed_gemm.py`: GEMM_2D_INNER_CONFIGS and GEMM_2D_ALGORITHMS dictionaries contain
+  all algorithm configurations. Gemm2D class composes any two Gemm1D instances.
+- `tests.py`: GEMM_TESTING_CONFIGURATIONS covers all 120 composed algorithm variants.
+- `distribution.py`: row_major, col_major, pure_row, pure_col, block_cyclic, alternating
+  column/row distribution functions.
+
+### Notable Fixes Applied During Development
+
+- R4, R5 (AG_A_COL outer): alternating_column_distribution returns non-contiguous numpy
+  views; added .copy() to A_dist to avoid MPI Isend contiguous buffer error.
+- R14 (AG_B_ROW outer, RS_C_ROW inner): A_dist needed block_cyclic(M, px, py, oc, ic)
+  [not (py, px, ic, oc)], giving A_local=(m/px, k/py). A_curr needed get_subtile(A, sz,
+  os_, idx, oi) [not (os_, sz, oi, idx)]. This ensures each rank's A k-range aligns with
+  its B_outer k-range at each outer step.

@@ -3,7 +3,7 @@ import random
 import argparse
 from mpi4py import MPI
 
-from composed_gemm import CommunicationDirection, Gemm1D, GemmDimension, MatrixCommunicated, SubtileScheme
+from composed_gemm import CommunicationDirection, Gemm1D, Gemm2D, GemmDimension, MatrixCommunicated, SubtileScheme
 from constants import USE_REFACTORED_ALGORITHMS
 from debug import rank_print
 
@@ -182,6 +182,167 @@ GEMM_TESTING_CONFIGURATIONS = {
     "AG_B_ROW_PARAMETERIZED_NEXT": TestGemmConfiguration(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
     "RS_C_COL_PARAMETERIZED_NEXT": TestGemmConfiguration(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
     "RS_C_ROW_PARAMETERIZED_NEXT": TestGemmConfiguration(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+
+    # Composed 2D algorithms — format: OUTER_MATRIX_DIST_DIR_INNER_MATRIX_DIST_DIR_COMPOSED
+    # First Gemm1D = outer loop, second Gemm1D = inner loop
+    # Alg 1: outer=AG_A_COL, inner=AG_A_ROW
+    "AG_A_COL_PREV_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    # Alg 2: outer=AG_A_COL, inner=AG_B_COL
+    "AG_A_COL_PREV_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    # Alg 3: outer=AG_B_ROW, inner=AG_A_COL
+    "AG_B_ROW_PREV_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    # Alg 4: outer=RS_C_COL, inner=AG_A_COL
+    "RS_C_COL_PREV_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    # Alg 5: outer=RS_C_ROW, inner=AG_A_COL
+    "RS_C_ROW_PREV_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    # Alg 6: outer=AG_A_ROW, inner=AG_B_COL
+    "AG_A_ROW_PREV_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    # Alg 7: outer=AG_B_ROW, inner=AG_A_ROW
+    "AG_B_ROW_PREV_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    # Alg 8: outer=AG_A_ROW, inner=RS_C_COL
+    "AG_A_ROW_PREV_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    # Alg 9: outer=RS_C_ROW, inner=AG_A_ROW
+    "RS_C_ROW_PREV_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    # Alg 10: outer=AG_B_COL, inner=AG_B_ROW
+    "AG_B_COL_PREV_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    # Alg 11: outer=RS_C_COL, inner=AG_B_COL
+    "RS_C_COL_PREV_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    # Alg 12: outer=AG_B_COL, inner=RS_C_ROW
+    "AG_B_COL_PREV_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    # Alg 13: outer=RS_C_COL, inner=AG_B_ROW
+    "RS_C_COL_PREV_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    # Alg 14: outer=RS_C_ROW, inner=AG_B_ROW
+    "RS_C_ROW_PREV_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    # Alg 15: outer=RS_C_COL, inner=RS_C_ROW
+    "RS_C_COL_PREV_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+
+    # === Direction variants: PREV+NEXT ===
+    "AG_A_COL_PREV_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_COL_PREV_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_B_ROW_PREV_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "RS_C_COL_PREV_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    "RS_C_ROW_PREV_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "AG_A_ROW_PREV_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    "AG_B_ROW_PREV_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_A_ROW_PREV_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "RS_C_ROW_PREV_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_B_COL_PREV_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "RS_C_COL_PREV_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_B_COL_PREV_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "RS_C_COL_PREV_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "RS_C_ROW_PREV_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    "RS_C_COL_PREV_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+
+    # === Direction variants: NEXT+PREV ===
+    "AG_A_COL_NEXT_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_COL_NEXT_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_B_ROW_NEXT_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "RS_C_COL_NEXT_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    "RS_C_ROW_NEXT_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "AG_A_ROW_NEXT_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    "AG_B_ROW_NEXT_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_A_ROW_NEXT_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "RS_C_ROW_NEXT_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_B_COL_NEXT_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "RS_C_COL_NEXT_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_B_COL_NEXT_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "RS_C_COL_NEXT_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "RS_C_ROW_NEXT_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    "RS_C_COL_NEXT_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+
+    # === Direction variants: NEXT+NEXT ===
+    "AG_A_COL_NEXT_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_COL_NEXT_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_B_ROW_NEXT_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "RS_C_COL_NEXT_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    "RS_C_ROW_NEXT_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "AG_A_ROW_NEXT_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    "AG_B_ROW_NEXT_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_A_ROW_NEXT_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "RS_C_ROW_NEXT_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_B_COL_NEXT_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "RS_C_COL_NEXT_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_B_COL_NEXT_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "RS_C_COL_NEXT_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+    "RS_C_ROW_NEXT_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    "RS_C_COL_NEXT_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.SIZE, GemmDimension.PY),
+
+    # === Reversed algorithm tests ===
+    # R1: outer=AG_A_ROW, inner=AG_A_COL — min dims: m%py, k%px, n%size
+    "AG_A_ROW_PREV_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "AG_A_ROW_PREV_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "AG_A_ROW_NEXT_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "AG_A_ROW_NEXT_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    # R10: outer=AG_B_ROW, inner=AG_B_COL — min dims: m%size, k%px, n%py
+    "AG_B_ROW_PREV_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_B_ROW_PREV_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_B_ROW_NEXT_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    "AG_B_ROW_NEXT_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+    # R15: outer=RS_C_ROW, inner=RS_C_COL — min dims: m%py, k%size, n%px
+    "RS_C_ROW_PREV_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "RS_C_ROW_PREV_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "RS_C_ROW_NEXT_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "RS_C_ROW_NEXT_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    # R6: outer=AG_B_COL, inner=AG_A_ROW — min dims: m%size, k%1, n%size
+    "AG_B_COL_PREV_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    "AG_B_COL_PREV_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    "AG_B_COL_NEXT_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    "AG_B_COL_NEXT_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+    # R3: outer=AG_A_COL, inner=AG_B_ROW — min dims: m%px, k%py, n%size
+    "AG_A_COL_PREV_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_COL_PREV_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_COL_NEXT_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_COL_NEXT_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    # R2: outer=AG_B_COL, inner=AG_A_COL — min dims: m%size, k%py, n%px
+    "AG_B_COL_PREV_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "AG_B_COL_PREV_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "AG_B_COL_NEXT_AG_A_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "AG_B_COL_NEXT_AG_A_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    # R7: outer=AG_A_ROW, inner=AG_B_ROW — min dims: m%px, k%py, n%size
+    "AG_A_ROW_PREV_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_ROW_PREV_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_ROW_NEXT_AG_B_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    "AG_A_ROW_NEXT_AG_B_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PX, GemmDimension.PY, GemmDimension.SIZE),
+    # R11: outer=AG_B_COL, inner=RS_C_COL — min dims: m%py, k%px, n%size
+    "AG_B_COL_PREV_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "AG_B_COL_PREV_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "AG_B_COL_NEXT_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "AG_B_COL_NEXT_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    # R12: outer=RS_C_ROW, inner=AG_B_COL — min dims: m%size, k%py, n%px
+    "RS_C_ROW_PREV_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "RS_C_ROW_PREV_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "RS_C_ROW_NEXT_AG_B_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "RS_C_ROW_NEXT_AG_B_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.B, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    # R13: outer=AG_B_ROW, inner=RS_C_COL — min dims: m%py, k%size, n%px
+    "AG_B_ROW_PREV_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "AG_B_ROW_PREV_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "AG_B_ROW_NEXT_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "AG_B_ROW_NEXT_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    # R14: outer=AG_B_ROW, inner=RS_C_ROW — min dims: m%size, k%size, n%1
+    "AG_B_ROW_PREV_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    "AG_B_ROW_PREV_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    "AG_B_ROW_NEXT_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    "AG_B_ROW_NEXT_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.B, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.SIZE, GemmDimension.ONE),
+    # R4: outer=AG_A_COL, inner=RS_C_COL — min dims: m%1, k%size, n%size
+    "AG_A_COL_PREV_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    "AG_A_COL_PREV_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    "AG_A_COL_NEXT_RS_C_COL_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    "AG_A_COL_NEXT_RS_C_COL_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+    # R5: outer=AG_A_COL, inner=RS_C_ROW — min dims: m%py, k%size, n%px
+    "AG_A_COL_PREV_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "AG_A_COL_PREV_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "AG_A_COL_NEXT_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    "AG_A_COL_NEXT_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+    # R8: outer=RS_C_COL, inner=AG_A_ROW — min dims: m%py, k%px, n%size
+    "RS_C_COL_PREV_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "RS_C_COL_PREV_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "RS_C_COL_NEXT_AG_A_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    "RS_C_COL_NEXT_AG_A_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.C, SubtileScheme.COL, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+    # R9: outer=AG_A_ROW, inner=RS_C_ROW — min dims: m%size, k%py, n%px
+    "AG_A_ROW_PREV_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "AG_A_ROW_PREV_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "AG_A_ROW_NEXT_RS_C_ROW_PREV_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+    "AG_A_ROW_NEXT_RS_C_ROW_NEXT_COMPOSED": TestGemmConfiguration(Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT), Gemm1D(MatrixCommunicated.C, SubtileScheme.ROW, CommunicationDirection.SEND_NEXT)).setup_and_run, GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
 }
 
 
@@ -210,3 +371,133 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+# algorithm names
+# AG_A_COL_PREV_AG_A_ROW_PREV_COMPOSED
+# AG_A_COL_PREV_AG_A_ROW_NEXT_COMPOSED
+# AG_A_COL_NEXT_AG_A_ROW_PREV_COMPOSED
+# AG_A_COL_NEXT_AG_A_ROW_NEXT_COMPOSED
+# AG_A_ROW_PREV_AG_A_COL_PREV_COMPOSED
+# AG_A_ROW_PREV_AG_A_COL_NEXT_COMPOSED
+# AG_A_ROW_NEXT_AG_A_COL_PREV_COMPOSED
+# AG_A_ROW_NEXT_AG_A_COL_NEXT_COMPOSED
+# AG_A_COL_PREV_AG_B_COL_PREV_COMPOSED
+# AG_A_COL_PREV_AG_B_COL_NEXT_COMPOSED
+# AG_A_COL_NEXT_AG_B_COL_PREV_COMPOSED
+# AG_A_COL_NEXT_AG_B_COL_NEXT_COMPOSED
+# AG_B_COL_PREV_AG_A_COL_PREV_COMPOSED
+# AG_B_COL_PREV_AG_A_COL_NEXT_COMPOSED
+# AG_B_COL_NEXT_AG_A_COL_PREV_COMPOSED
+# AG_B_COL_NEXT_AG_A_COL_NEXT_COMPOSED
+# AG_A_COL_PREV_AG_B_ROW_PREV_COMPOSED
+# AG_A_COL_PREV_AG_B_ROW_NEXT_COMPOSED
+# AG_A_COL_NEXT_AG_B_ROW_PREV_COMPOSED
+# AG_A_COL_NEXT_AG_B_ROW_NEXT_COMPOSED
+# AG_B_ROW_PREV_AG_A_COL_PREV_COMPOSED
+# AG_B_ROW_PREV_AG_A_COL_NEXT_COMPOSED
+# AG_B_ROW_NEXT_AG_A_COL_PREV_COMPOSED
+# AG_B_ROW_NEXT_AG_A_COL_NEXT_COMPOSED
+# AG_A_COL_PREV_RS_C_COL_PREV_COMPOSED
+# AG_A_COL_PREV_RS_C_COL_NEXT_COMPOSED
+# AG_A_COL_NEXT_RS_C_COL_PREV_COMPOSED
+# AG_A_COL_NEXT_RS_C_COL_NEXT_COMPOSED
+# RS_C_COL_PREV_AG_A_COL_PREV_COMPOSED
+# RS_C_COL_PREV_AG_A_COL_NEXT_COMPOSED
+# RS_C_COL_NEXT_AG_A_COL_PREV_COMPOSED
+# RS_C_COL_NEXT_AG_A_COL_NEXT_COMPOSED
+# AG_A_COL_PREV_RS_C_ROW_PREV_COMPOSED
+# AG_A_COL_PREV_RS_C_ROW_NEXT_COMPOSED
+# AG_A_COL_NEXT_RS_C_ROW_PREV_COMPOSED
+# AG_A_COL_NEXT_RS_C_ROW_NEXT_COMPOSED
+# RS_C_ROW_PREV_AG_A_COL_PREV_COMPOSED
+# RS_C_ROW_PREV_AG_A_COL_NEXT_COMPOSED
+# RS_C_ROW_NEXT_AG_A_COL_PREV_COMPOSED
+# RS_C_ROW_NEXT_AG_A_COL_NEXT_COMPOSED
+# AG_A_ROW_PREV_AG_B_COL_PREV_COMPOSED
+# AG_A_ROW_PREV_AG_B_COL_NEXT_COMPOSED
+# AG_A_ROW_NEXT_AG_B_COL_PREV_COMPOSED
+# AG_A_ROW_NEXT_AG_B_COL_NEXT_COMPOSED
+# AG_B_COL_PREV_AG_A_ROW_PREV_COMPOSED
+# AG_B_COL_PREV_AG_A_ROW_NEXT_COMPOSED
+# AG_B_COL_NEXT_AG_A_ROW_PREV_COMPOSED
+# AG_B_COL_NEXT_AG_A_ROW_NEXT_COMPOSED
+# AG_A_ROW_PREV_AG_B_ROW_PREV_COMPOSED
+# AG_A_ROW_PREV_AG_B_ROW_NEXT_COMPOSED
+# AG_A_ROW_NEXT_AG_B_ROW_PREV_COMPOSED
+# AG_A_ROW_NEXT_AG_B_ROW_NEXT_COMPOSED
+# AG_B_ROW_PREV_AG_A_ROW_PREV_COMPOSED
+# AG_B_ROW_PREV_AG_A_ROW_NEXT_COMPOSED
+# AG_B_ROW_NEXT_AG_A_ROW_PREV_COMPOSED
+# AG_B_ROW_NEXT_AG_A_ROW_NEXT_COMPOSED
+# AG_A_ROW_PREV_RS_C_COL_PREV_COMPOSED
+# AG_A_ROW_PREV_RS_C_COL_NEXT_COMPOSED
+# AG_A_ROW_NEXT_RS_C_COL_PREV_COMPOSED
+# AG_A_ROW_NEXT_RS_C_COL_NEXT_COMPOSED
+# RS_C_COL_PREV_AG_A_ROW_PREV_COMPOSED
+# RS_C_COL_PREV_AG_A_ROW_NEXT_COMPOSED
+# RS_C_COL_NEXT_AG_A_ROW_PREV_COMPOSED
+# RS_C_COL_NEXT_AG_A_ROW_NEXT_COMPOSED
+# AG_A_ROW_PREV_RS_C_ROW_PREV_COMPOSED
+# AG_A_ROW_PREV_RS_C_ROW_NEXT_COMPOSED
+# AG_A_ROW_NEXT_RS_C_ROW_PREV_COMPOSED
+# AG_A_ROW_NEXT_RS_C_ROW_NEXT_COMPOSED
+# RS_C_ROW_PREV_AG_A_ROW_PREV_COMPOSED
+# RS_C_ROW_PREV_AG_A_ROW_NEXT_COMPOSED
+# RS_C_ROW_NEXT_AG_A_ROW_PREV_COMPOSED
+# RS_C_ROW_NEXT_AG_A_ROW_NEXT_COMPOSED
+# AG_B_COL_PREV_AG_B_ROW_PREV_COMPOSED
+# AG_B_COL_PREV_AG_B_ROW_NEXT_COMPOSED
+# AG_B_COL_NEXT_AG_B_ROW_PREV_COMPOSED
+# AG_B_COL_NEXT_AG_B_ROW_NEXT_COMPOSED
+# AG_B_ROW_PREV_AG_B_COL_PREV_COMPOSED
+# AG_B_ROW_PREV_AG_B_COL_NEXT_COMPOSED
+# AG_B_ROW_NEXT_AG_B_COL_PREV_COMPOSED
+# AG_B_ROW_NEXT_AG_B_COL_NEXT_COMPOSED
+# AG_B_COL_PREV_RS_C_COL_PREV_COMPOSED
+# AG_B_COL_PREV_RS_C_COL_NEXT_COMPOSED
+# AG_B_COL_NEXT_RS_C_COL_PREV_COMPOSED
+# AG_B_COL_NEXT_RS_C_COL_NEXT_COMPOSED
+# RS_C_COL_PREV_AG_B_COL_PREV_COMPOSED
+# RS_C_COL_PREV_AG_B_COL_NEXT_COMPOSED
+# RS_C_COL_NEXT_AG_B_COL_PREV_COMPOSED
+# RS_C_COL_NEXT_AG_B_COL_NEXT_COMPOSED
+# AG_B_COL_PREV_RS_C_ROW_PREV_COMPOSED
+# AG_B_COL_PREV_RS_C_ROW_NEXT_COMPOSED
+# AG_B_COL_NEXT_RS_C_ROW_PREV_COMPOSED
+# AG_B_COL_NEXT_RS_C_ROW_NEXT_COMPOSED
+# RS_C_ROW_PREV_AG_B_COL_PREV_COMPOSED
+# RS_C_ROW_PREV_AG_B_COL_NEXT_COMPOSED
+# RS_C_ROW_NEXT_AG_B_COL_PREV_COMPOSED
+# RS_C_ROW_NEXT_AG_B_COL_NEXT_COMPOSED
+# AG_B_ROW_PREV_RS_C_COL_PREV_COMPOSED
+# AG_B_ROW_PREV_RS_C_COL_NEXT_COMPOSED
+# AG_B_ROW_NEXT_RS_C_COL_PREV_COMPOSED
+# AG_B_ROW_NEXT_RS_C_COL_NEXT_COMPOSED
+# RS_C_COL_PREV_AG_B_ROW_PREV_COMPOSED
+# RS_C_COL_PREV_AG_B_ROW_NEXT_COMPOSED
+# RS_C_COL_NEXT_AG_B_ROW_PREV_COMPOSED
+# RS_C_COL_NEXT_AG_B_ROW_NEXT_COMPOSED
+# AG_B_ROW_PREV_RS_C_ROW_PREV_COMPOSED
+# AG_B_ROW_PREV_RS_C_ROW_NEXT_COMPOSED
+# AG_B_ROW_NEXT_RS_C_ROW_PREV_COMPOSED
+# AG_B_ROW_NEXT_RS_C_ROW_NEXT_COMPOSED
+# RS_C_ROW_PREV_AG_B_ROW_PREV_COMPOSED
+# RS_C_ROW_PREV_AG_B_ROW_NEXT_COMPOSED
+# RS_C_ROW_NEXT_AG_B_ROW_PREV_COMPOSED
+# RS_C_ROW_NEXT_AG_B_ROW_NEXT_COMPOSED
+# RS_C_COL_PREV_RS_C_ROW_PREV_COMPOSED
+# RS_C_COL_PREV_RS_C_ROW_NEXT_COMPOSED
+# RS_C_COL_NEXT_RS_C_ROW_PREV_COMPOSED
+# RS_C_COL_NEXT_RS_C_ROW_NEXT_COMPOSED
+# RS_C_ROW_PREV_RS_C_COL_PREV_COMPOSED
+# RS_C_ROW_PREV_RS_C_COL_NEXT_COMPOSED
+# RS_C_ROW_NEXT_RS_C_COL_PREV_COMPOSED
+# RS_C_ROW_NEXT_RS_C_COL_NEXT_COMPOSED
