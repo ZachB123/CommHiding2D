@@ -321,54 +321,21 @@ GEMM_2D_INNER_LOOP_CONFIGURATIONS = {
             make_inner_c_matrix=None,
             reduce_scatter_finalize=None,
         ),
-    # R10: outer=AG_B_ROW, inner=AG_B_COL (reverse of Alg 10)
-    ((MatrixCommunicated.B, SubtileScheme.ROW), (MatrixCommunicated.B, SubtileScheme.COL)):
+    # R2: outer=AG_B_COL, inner=AG_A_COL (reverse of Alg 2)
+    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.COL)):
         Gemm2DInnerLoopConfiguration(
             make_buffer=lambda A, B, C, A_outer, B_outer, outer_index, inner_size, outer_size:
-                DoubleBuffer(np.copy(B_outer), make_contiguous=False),
+                SubtileBuffer(A, 1, outer_size, 0, outer_index, needs_contiguous=True),
             persistent_buffer=False,
             loopback=False,
-            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
-                lambda A, B, C, buffer, index, size: get_subtile(A, 1, outer_size, 0, outer_index),
-                lambda A, B, C, buffer, index, size: buffer.get_buffer(),
-                lambda A, B, C, buffer, index, size: get_subtile(C, 1, size, 0, index),
-            ),
-            set_c_tile=lambda A_outer, B_outer, outer_index, outer_size:
-                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, 1, size, 0, index),
-            make_inner_c_matrix=None,
-            reduce_scatter_finalize=None,
-        ),
-    # R6: outer=AG_B_COL, inner=AG_A_ROW (reverse of Alg 6)
-    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
-        Gemm2DInnerLoopConfiguration(
-            make_buffer=lambda A, B, C, A_outer, B_outer, outer_index, inner_size, outer_size:
-                DoubleBuffer(np.copy(A), make_contiguous=False),
-            persistent_buffer=True,
-            loopback=True,
             tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
                 lambda A, B, C, buffer, index, size: buffer.get_buffer(),
                 lambda A, B, C, buffer, index, size: B_outer,
-                lambda A, B, C, buffer, index, size: get_subtile(C, size, outer_size, index, outer_index),
+                lambda A, B, C, buffer, index, size: get_subtile(C, size, 1, index, 0),
             ),
             set_c_tile=lambda A_outer, B_outer, outer_index, outer_size:
-                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, size, outer_size, index, outer_index),
+                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, size, 1, index, 0),
             make_inner_c_matrix=None,
-            reduce_scatter_finalize=None,
-        ),
-    # R15: outer=RS_C_ROW, inner=RS_C_COL (reverse of Alg 15)
-    ((MatrixCommunicated.C, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.COL)):
-        Gemm2DInnerLoopConfiguration(
-            make_buffer=None,
-            persistent_buffer=False,
-            loopback=False,
-            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
-                lambda A, B, C, buffer, index, size: get_subtile(A, outer_size, 1, outer_index, 0),
-                lambda A, B, C, buffer, index, size: get_subtile(B, 1, size, 0, index),
-                lambda A, B, C, buffer, index, size: np.zeros(C.shape, dtype=MATRIX_DTYPE),
-            ),
-            set_c_tile=None,
-            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
-                np.zeros(C.shape, dtype=MATRIX_DTYPE),
             reduce_scatter_finalize=None,
         ),
     # R3: outer=AG_A_COL, inner=AG_B_ROW (reverse of Alg 3)
@@ -388,20 +355,54 @@ GEMM_2D_INNER_LOOP_CONFIGURATIONS = {
             make_inner_c_matrix=None,
             reduce_scatter_finalize=None,
         ),
-    # R2: outer=AG_B_COL, inner=AG_A_COL (reverse of Alg 2)
-    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.COL)):
+    # R4: outer=AG_A_COL, inner=RS_C_COL (reverse of Alg 4)
+    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.COL)):
         Gemm2DInnerLoopConfiguration(
-            make_buffer=lambda A, B, C, A_outer, B_outer, outer_index, inner_size, outer_size:
-                SubtileBuffer(A, 1, outer_size, 0, outer_index, needs_contiguous=True),
+            make_buffer=None,
             persistent_buffer=False,
             loopback=False,
             tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
+                lambda A, B, C, buffer, index, size: A_outer,
+                lambda A, B, C, buffer, index, size: get_subtile(B, outer_size, size, outer_index, index),
+                lambda A, B, C, buffer, index, size: np.zeros(C.shape, dtype=MATRIX_DTYPE),
+            ),
+            set_c_tile=None,
+            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
+                np.zeros(C.shape, dtype=MATRIX_DTYPE),
+            reduce_scatter_finalize=lambda result, C, outer_index, inner_size, outer_size:
+                np.copyto(C, result + C),
+        ),
+    # R5: outer=AG_A_COL, inner=RS_C_ROW (reverse of Alg 5)
+    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.ROW)):
+        Gemm2DInnerLoopConfiguration(
+            make_buffer=None,
+            persistent_buffer=False,
+            loopback=False,
+            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
+                lambda A, B, C, buffer, index, size: get_subtile(A_outer, size, 1, index, 0),
+                lambda A, B, C, buffer, index, size: get_subtile(B, outer_size, 1, outer_index, 0),
+                lambda A, B, C, buffer, index, size: np.zeros(C.shape, dtype=MATRIX_DTYPE),
+            ),
+            set_c_tile=None,
+            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
+                np.zeros(C.shape, dtype=MATRIX_DTYPE),
+            reduce_scatter_finalize=lambda result, C, outer_index, inner_size, outer_size:
+                np.copyto(C, result + C),
+        ),
+    # R6: outer=AG_B_COL, inner=AG_A_ROW (reverse of Alg 6)
+    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
+        Gemm2DInnerLoopConfiguration(
+            make_buffer=lambda A, B, C, A_outer, B_outer, outer_index, inner_size, outer_size:
+                DoubleBuffer(np.copy(A), make_contiguous=False),
+            persistent_buffer=True,
+            loopback=True,
+            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
                 lambda A, B, C, buffer, index, size: buffer.get_buffer(),
                 lambda A, B, C, buffer, index, size: B_outer,
-                lambda A, B, C, buffer, index, size: get_subtile(C, size, 1, index, 0),
+                lambda A, B, C, buffer, index, size: get_subtile(C, size, outer_size, index, outer_index),
             ),
             set_c_tile=lambda A_outer, B_outer, outer_index, outer_size:
-                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, size, 1, index, 0),
+                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, size, outer_size, index, outer_index),
             make_inner_c_matrix=None,
             reduce_scatter_finalize=None,
         ),
@@ -414,6 +415,58 @@ GEMM_2D_INNER_LOOP_CONFIGURATIONS = {
             loopback=False,
             tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
                 lambda A, B, C, buffer, index, size: A_outer,
+                lambda A, B, C, buffer, index, size: buffer.get_buffer(),
+                lambda A, B, C, buffer, index, size: get_subtile(C, 1, size, 0, index),
+            ),
+            set_c_tile=lambda A_outer, B_outer, outer_index, outer_size:
+                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, 1, size, 0, index),
+            make_inner_c_matrix=None,
+            reduce_scatter_finalize=None,
+        ),
+    # R8: outer=RS_C_COL, inner=AG_A_ROW (reverse of Alg 8)
+    ((MatrixCommunicated.C, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
+        Gemm2DInnerLoopConfiguration(
+            make_buffer=lambda A, B, C, A_outer, B_outer, outer_index, inner_size, outer_size:
+                DoubleBuffer(A, make_contiguous=True),
+            persistent_buffer=True,
+            loopback=True,
+            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
+                lambda A, B, C, buffer, index, size: buffer.get_buffer(),
+                lambda A, B, C, buffer, index, size: get_subtile(B, 1, outer_size, 0, outer_index),
+                lambda A, B, C, buffer, index, size: get_subtile(C, size, 1, index, 0),
+            ),
+            set_c_tile=lambda A_outer, B_outer, outer_index, outer_size:
+                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, size, 1, index, 0),
+            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
+                np.zeros(C.shape, dtype=MATRIX_DTYPE),
+            reduce_scatter_finalize=None,
+        ),
+    # R9: outer=AG_A_ROW, inner=RS_C_ROW (reverse of Alg 9)
+    ((MatrixCommunicated.A, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.ROW)):
+        Gemm2DInnerLoopConfiguration(
+            make_buffer=None,
+            persistent_buffer=False,
+            loopback=False,
+            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
+                lambda A, B, C, buffer, index, size: get_subtile(A_outer, size, 1, index, 0),
+                lambda A, B, C, buffer, index, size: B,
+                lambda A, B, C, buffer, index, size: np.zeros(C.shape, dtype=MATRIX_DTYPE),
+            ),
+            set_c_tile=None,
+            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
+                np.zeros(get_subtile_shape(C, outer_size, 1), dtype=MATRIX_DTYPE),
+            reduce_scatter_finalize=lambda result, C, outer_index, inner_size, outer_size:
+                set_subtile(C, result + get_subtile(C, outer_size, 1, outer_index, 0), outer_size, 1, outer_index, 0),
+        ),
+    # R10: outer=AG_B_ROW, inner=AG_B_COL (reverse of Alg 10)
+    ((MatrixCommunicated.B, SubtileScheme.ROW), (MatrixCommunicated.B, SubtileScheme.COL)):
+        Gemm2DInnerLoopConfiguration(
+            make_buffer=lambda A, B, C, A_outer, B_outer, outer_index, inner_size, outer_size:
+                DoubleBuffer(np.copy(B_outer), make_contiguous=False),
+            persistent_buffer=False,
+            loopback=False,
+            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
+                lambda A, B, C, buffer, index, size: get_subtile(A, 1, outer_size, 0, outer_index),
                 lambda A, B, C, buffer, index, size: buffer.get_buffer(),
                 lambda A, B, C, buffer, index, size: get_subtile(C, 1, size, 0, index),
             ),
@@ -491,74 +544,21 @@ GEMM_2D_INNER_LOOP_CONFIGURATIONS = {
             reduce_scatter_finalize=lambda result, C, outer_index, inner_size, outer_size:
                 np.copyto(C, result + C),
         ),
-    # R4: outer=AG_A_COL, inner=RS_C_COL (reverse of Alg 4)
-    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.COL)):
+    # R15: outer=RS_C_ROW, inner=RS_C_COL (reverse of Alg 15)
+    ((MatrixCommunicated.C, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.COL)):
         Gemm2DInnerLoopConfiguration(
             make_buffer=None,
             persistent_buffer=False,
             loopback=False,
             tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
-                lambda A, B, C, buffer, index, size: A_outer,
-                lambda A, B, C, buffer, index, size: get_subtile(B, outer_size, size, outer_index, index),
+                lambda A, B, C, buffer, index, size: get_subtile(A, outer_size, 1, outer_index, 0),
+                lambda A, B, C, buffer, index, size: get_subtile(B, 1, size, 0, index),
                 lambda A, B, C, buffer, index, size: np.zeros(C.shape, dtype=MATRIX_DTYPE),
             ),
             set_c_tile=None,
-            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
-                np.zeros(C.shape, dtype=MATRIX_DTYPE),
-            reduce_scatter_finalize=lambda result, C, outer_index, inner_size, outer_size:
-                np.copyto(C, result + C),
-        ),
-    # R5: outer=AG_A_COL, inner=RS_C_ROW (reverse of Alg 5)
-    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.ROW)):
-        Gemm2DInnerLoopConfiguration(
-            make_buffer=None,
-            persistent_buffer=False,
-            loopback=False,
-            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
-                lambda A, B, C, buffer, index, size: get_subtile(A_outer, size, 1, index, 0),
-                lambda A, B, C, buffer, index, size: get_subtile(B, outer_size, 1, outer_index, 0),
-                lambda A, B, C, buffer, index, size: np.zeros(C.shape, dtype=MATRIX_DTYPE),
-            ),
-            set_c_tile=None,
-            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
-                np.zeros(C.shape, dtype=MATRIX_DTYPE),
-            reduce_scatter_finalize=lambda result, C, outer_index, inner_size, outer_size:
-                np.copyto(C, result + C),
-        ),
-    # R8: outer=RS_C_COL, inner=AG_A_ROW (reverse of Alg 8)
-    ((MatrixCommunicated.C, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
-        Gemm2DInnerLoopConfiguration(
-            make_buffer=lambda A, B, C, A_outer, B_outer, outer_index, inner_size, outer_size:
-                DoubleBuffer(A, make_contiguous=True),
-            persistent_buffer=True,
-            loopback=True,
-            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
-                lambda A, B, C, buffer, index, size: buffer.get_buffer(),
-                lambda A, B, C, buffer, index, size: get_subtile(B, 1, outer_size, 0, outer_index),
-                lambda A, B, C, buffer, index, size: get_subtile(C, size, 1, index, 0),
-            ),
-            set_c_tile=lambda A_outer, B_outer, outer_index, outer_size:
-                lambda C, C_tmp, index, size: set_subtile(C, C_tmp, size, 1, index, 0),
             make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
                 np.zeros(C.shape, dtype=MATRIX_DTYPE),
             reduce_scatter_finalize=None,
-        ),
-    # R9: outer=AG_A_ROW, inner=RS_C_ROW (reverse of Alg 9)
-    ((MatrixCommunicated.A, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.ROW)):
-        Gemm2DInnerLoopConfiguration(
-            make_buffer=None,
-            persistent_buffer=False,
-            loopback=False,
-            tiles=lambda A_outer, B_outer, outer_index, outer_size: CurrentTiles(
-                lambda A, B, C, buffer, index, size: get_subtile(A_outer, size, 1, index, 0),
-                lambda A, B, C, buffer, index, size: B,
-                lambda A, B, C, buffer, index, size: np.zeros(C.shape, dtype=MATRIX_DTYPE),
-            ),
-            set_c_tile=None,
-            make_inner_c_matrix=lambda C, outer_index, inner_size, outer_size:
-                np.zeros(get_subtile_shape(C, outer_size, 1), dtype=MATRIX_DTYPE),
-            reduce_scatter_finalize=lambda result, C, outer_index, inner_size, outer_size:
-                set_subtile(C, result + get_subtile(C, outer_size, 1, outer_index, 0), outer_size, 1, outer_index, 0),
         ),
 }
 
@@ -812,41 +812,17 @@ GEMM_2D_ALGORITHM_CONFIGURATIONS = {
             ),
             get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_column_distribution_get_local_indices(rank)),
         ),
-    # R10: outer=AG_B_ROW, inner=AG_B_COL (reverse of Alg 10)
-    ((MatrixCommunicated.B, SubtileScheme.ROW), (MatrixCommunicated.B, SubtileScheme.COL)):
-        Gemm2DAlgorithmConfiguration(
-            group_param=lambda px, py: py,
-            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
-            distribution=DistributionFunctions(
-                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, px, py, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
-            ),
-            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_row_distribution_get_local_indices(rank)),
-        ),
-    # R6: outer=AG_B_COL, inner=AG_A_ROW (reverse of Alg 6)
-    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
+    # R2: outer=AG_B_COL, inner=AG_A_COL (reverse of Alg 2)
+    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.COL)):
         Gemm2DAlgorithmConfiguration(
             group_param=lambda px, py: px,
-            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
+            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
             distribution=DistributionFunctions(
                 lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: alternating_column_distribution(M, py, px, rank).copy(),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, py, px, rank),
                 lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, py, px, rank),
             ),
             get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, row_major_distribution_get_local_indices(px, rank)),
-        ),
-    # R15: outer=RS_C_ROW, inner=RS_C_COL (reverse of Alg 15)
-    ((MatrixCommunicated.C, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.COL)):
-        Gemm2DAlgorithmConfiguration(
-            group_param=lambda px, py: py,
-            divisibility=DivisibiltyRequirements(GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
-            distribution=DistributionFunctions(
-                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_column_distribution(M, size, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
-            ),
-            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, col_major_distribution_get_local_indices(py, rank)),
         ),
     # R3: outer=AG_A_COL, inner=AG_B_ROW (reverse of Alg 3)
     ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.B, SubtileScheme.ROW)):
@@ -860,14 +836,38 @@ GEMM_2D_ALGORITHM_CONFIGURATIONS = {
             ),
             get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, col_major_distribution_get_local_indices(px, rank)),
         ),
-    # R2: outer=AG_B_COL, inner=AG_A_COL (reverse of Alg 2)
-    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.COL)):
+    # R4: outer=AG_A_COL, inner=RS_C_COL (reverse of Alg 4)
+    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.COL)):
         Gemm2DAlgorithmConfiguration(
             group_param=lambda px, py: px,
-            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+            divisibility=DivisibiltyRequirements(GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
+            distribution=DistributionFunctions(
+                lambda M, px, py, rank, size, outer_comm, inner_comm: alternating_column_distribution(M, py, px, rank).copy(),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, px, py, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_column_distribution(M, size, rank),
+            ),
+            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_column_distribution_get_local_indices(rank)),
+        ),
+    # R5: outer=AG_A_COL, inner=RS_C_ROW (reverse of Alg 5)
+    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.ROW)):
+        Gemm2DAlgorithmConfiguration(
+            group_param=lambda px, py: py,
+            divisibility=DivisibiltyRequirements(GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
+            distribution=DistributionFunctions(
+                lambda M, px, py, rank, size, outer_comm, inner_comm: alternating_column_distribution(M, px, py, rank).copy(),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
+            ),
+            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, col_major_distribution_get_local_indices(py, rank)),
+        ),
+    # R6: outer=AG_B_COL, inner=AG_A_ROW (reverse of Alg 6)
+    ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
+        Gemm2DAlgorithmConfiguration(
+            group_param=lambda px, py: px,
+            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.ONE, GemmDimension.SIZE),
             distribution=DistributionFunctions(
                 lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, py, px, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: alternating_column_distribution(M, py, px, rank).copy(),
                 lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, py, px, rank),
             ),
             get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, row_major_distribution_get_local_indices(px, rank)),
@@ -883,6 +883,42 @@ GEMM_2D_ALGORITHM_CONFIGURATIONS = {
                 lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, px, py, rank),
             ),
             get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, col_major_distribution_get_local_indices(px, rank)),
+        ),
+    # R8: outer=RS_C_COL, inner=AG_A_ROW (reverse of Alg 8)
+    ((MatrixCommunicated.C, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
+        Gemm2DAlgorithmConfiguration(
+            group_param=lambda px, py: px,
+            divisibility=DivisibiltyRequirements(GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
+            distribution=DistributionFunctions(
+                lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, py, px, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, px, py, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_column_distribution(M, size, rank),
+            ),
+            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_column_distribution_get_local_indices(rank)),
+        ),
+    # R9: outer=AG_A_ROW, inner=RS_C_ROW (reverse of Alg 9)
+    ((MatrixCommunicated.A, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.ROW)):
+        Gemm2DAlgorithmConfiguration(
+            group_param=lambda px, py: py,
+            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
+            distribution=DistributionFunctions(
+                lambda M, px, py, rank, size, outer_comm, inner_comm: A9_distribution(M, py, px, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
+            ),
+            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, col_major_distribution_get_local_indices(py, rank)),
+        ),
+    # R10: outer=AG_B_ROW, inner=AG_B_COL (reverse of Alg 10)
+    ((MatrixCommunicated.B, SubtileScheme.ROW), (MatrixCommunicated.B, SubtileScheme.COL)):
+        Gemm2DAlgorithmConfiguration(
+            group_param=lambda px, py: py,
+            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.PX, GemmDimension.PY),
+            distribution=DistributionFunctions(
+                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, px, py, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
+            ),
+            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_row_distribution_get_local_indices(rank)),
         ),
     # R11: outer=AG_B_COL, inner=RS_C_COL (reverse of Alg 11)
     ((MatrixCommunicated.B, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.COL)):
@@ -933,50 +969,14 @@ GEMM_2D_ALGORITHM_CONFIGURATIONS = {
             ),
             get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_row_distribution_get_local_indices(rank)),
         ),
-    # R4: outer=AG_A_COL, inner=RS_C_COL (reverse of Alg 4)
-    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.COL)):
-        Gemm2DAlgorithmConfiguration(
-            group_param=lambda px, py: px,
-            divisibility=DivisibiltyRequirements(GemmDimension.ONE, GemmDimension.SIZE, GemmDimension.SIZE),
-            distribution=DistributionFunctions(
-                lambda M, px, py, rank, size, outer_comm, inner_comm: alternating_column_distribution(M, py, px, rank).copy(),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, px, py, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_column_distribution(M, size, rank),
-            ),
-            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_column_distribution_get_local_indices(rank)),
-        ),
-    # R5: outer=AG_A_COL, inner=RS_C_ROW (reverse of Alg 5)
-    ((MatrixCommunicated.A, SubtileScheme.COL), (MatrixCommunicated.C, SubtileScheme.ROW)):
+    # R15: outer=RS_C_ROW, inner=RS_C_COL (reverse of Alg 15)
+    ((MatrixCommunicated.C, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.COL)):
         Gemm2DAlgorithmConfiguration(
             group_param=lambda px, py: py,
             divisibility=DivisibiltyRequirements(GemmDimension.PY, GemmDimension.SIZE, GemmDimension.PX),
             distribution=DistributionFunctions(
-                lambda M, px, py, rank, size, outer_comm, inner_comm: alternating_column_distribution(M, px, py, rank).copy(),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
-            ),
-            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, col_major_distribution_get_local_indices(py, rank)),
-        ),
-    # R8: outer=RS_C_COL, inner=AG_A_ROW (reverse of Alg 8)
-    ((MatrixCommunicated.C, SubtileScheme.COL), (MatrixCommunicated.A, SubtileScheme.ROW)):
-        Gemm2DAlgorithmConfiguration(
-            group_param=lambda px, py: px,
-            divisibility=DivisibiltyRequirements(GemmDimension.PY, GemmDimension.PX, GemmDimension.SIZE),
-            distribution=DistributionFunctions(
-                lambda M, px, py, rank, size, outer_comm, inner_comm: row_major_distribution(M, py, px, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, px, py, rank),
                 lambda M, px, py, rank, size, outer_comm, inner_comm: pure_column_distribution(M, size, rank),
-            ),
-            get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, pure_column_distribution_get_local_indices(rank)),
-        ),
-    # R9: outer=AG_A_ROW, inner=RS_C_ROW (reverse of Alg 9)
-    ((MatrixCommunicated.A, SubtileScheme.ROW), (MatrixCommunicated.C, SubtileScheme.ROW)):
-        Gemm2DAlgorithmConfiguration(
-            group_param=lambda px, py: py,
-            divisibility=DivisibiltyRequirements(GemmDimension.SIZE, GemmDimension.PY, GemmDimension.PX),
-            distribution=DistributionFunctions(
-                lambda M, px, py, rank, size, outer_comm, inner_comm: A9_distribution(M, py, px, rank),
-                lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
+                lambda M, px, py, rank, size, outer_comm, inner_comm: pure_row_distribution(M, size, rank),
                 lambda M, px, py, rank, size, outer_comm, inner_comm: col_major_distribution(M, py, px, rank),
             ),
             get_local_indices=lambda C, rank, px, py, size, outer_comm, inner_comm: (C, col_major_distribution_get_local_indices(py, rank)),
