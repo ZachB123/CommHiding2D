@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 from enums import GemmDimension
 
@@ -37,3 +37,21 @@ class CurrentTiles:
     A_curr: Callable
     B_curr: Callable
     C_curr: Callable
+
+@dataclass(frozen=True)
+class Gemm2DInnerLoopConfiguration:
+    make_buffer: Optional[Callable]
+    persistent_buffer: bool
+    loopback: bool
+    tiles: Callable
+    set_c_tile: Optional[Callable]
+    make_inner_c_matrix: Optional[Callable]
+    reduce_scatter_finalize: Optional[Callable]
+
+@dataclass(frozen=True)
+class Gemm2DAlgorithmConfiguration:
+    group_param: Callable
+    divisibility: DivisibiltyRequirements
+    distribution: DistributionFunctions
+    get_local_indices: Callable
+    flatten_gather: bool = False
