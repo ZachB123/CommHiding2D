@@ -5,59 +5,33 @@ from mpi4py import MPI
 
 from composed_gemm_1d import CommunicationDirection, Gemm1D, GemmDimension, MatrixCommunicated, SubtileScheme
 from composed_gemm_2d import Gemm2D
-from constants import USE_REFACTORED_ALGORITHMS
 from debug import rank_print
 
-if USE_REFACTORED_ALGORITHMS:
-    from refactored_gemm import (
-        AG_A_COL_AG_A_ROW,
-        AG_A_COL_AG_B_COL,
-        AG_A_COL_AG_B_ROW,
-        AG_A_COL_RS_C_COL,
-        AG_A_COL_RS_C_ROW,
-        AG_A_ROW_AG_B_COL,
-        AG_A_ROW_AG_B_ROW,
-        AG_A_ROW_RS_C_COL,
-        AG_A_ROW_RS_C_ROW,
-        AG_B_COL_AG_B_ROW,
-        AG_B_COL_RS_C_COL,
-        AG_B_COL_RS_C_ROW,
-        AG_B_ROW_RS_C_COL,
-        AG_B_ROW_RS_C_ROW,
-        RS_C_COL_RS_C_ROW,
+from gemm import (
+    AG_A_COL_AG_A_ROW,
+    AG_A_COL_AG_B_COL,
+    AG_A_COL_AG_B_ROW,
+    AG_A_COL_RS_C_COL,
+    AG_A_COL_RS_C_ROW,
+    AG_A_ROW_AG_B_COL,
+    AG_A_ROW_AG_B_ROW,
+    AG_A_ROW_RS_C_COL,
+    AG_A_ROW_RS_C_ROW,
+    AG_B_COL_AG_B_ROW,
+    AG_B_COL_RS_C_COL,
+    AG_B_COL_RS_C_ROW,
+    AG_B_ROW_RS_C_COL,
+    AG_B_ROW_RS_C_ROW,
+    RS_C_COL_RS_C_ROW,
 
-        AG_A_COL,
-        AG_A_ROW,
-        AG_B_COL,
-        AG_B_ROW,
-        RS_C_COL,
-        RS_C_ROW
-    )
-else:
-    from gemm import (
-        AG_A_COL_AG_A_ROW,
-        AG_A_COL_AG_B_COL,
-        AG_A_COL_AG_B_ROW,
-        AG_A_COL_RS_C_COL,
-        AG_A_COL_RS_C_ROW,
-        AG_A_ROW_AG_B_COL,
-        AG_A_ROW_AG_B_ROW,
-        AG_A_ROW_RS_C_COL,
-        AG_A_ROW_RS_C_ROW,
-        AG_B_COL_AG_B_ROW,
-        AG_B_COL_RS_C_COL,
-        AG_B_COL_RS_C_ROW,
-        AG_B_ROW_RS_C_COL,
-        AG_B_ROW_RS_C_ROW,
-        RS_C_COL_RS_C_ROW,
+    AG_A_COL,
+    AG_A_ROW,
+    AG_B_COL,
+    AG_B_ROW,
+    RS_C_COL,
+    RS_C_ROW
+)
 
-        AG_A_COL,
-        AG_A_ROW,
-        AG_B_COL,
-        AG_B_ROW,
-        RS_C_COL,
-        RS_C_ROW
-    )
 
 class TestGemmConfiguration:
     def __init__(self, algorithm, min_m, min_k, min_n):

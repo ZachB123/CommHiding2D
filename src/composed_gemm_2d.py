@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 
 from constants import MATRIX_DTYPE
@@ -564,7 +565,7 @@ GEMM_2D_INNER_LOOP_CONFIGURATIONS = {
 
 
 def make_inner_loop_compute_function(algorithm_key, A, B, C, inner_comm, inner_size, inner_rank,
-                                     outer_size, px, py, inner_config, outer_config):
+                                     outer_size, px, py, inner_config, outer_config, skip_computation=False):
     config = GEMM_2D_INNER_LOOP_CONFIGURATIONS[algorithm_key]
     outer_is_all_gather = outer_config.matrix_communicated != MatrixCommunicated.C
 
@@ -602,6 +603,7 @@ def make_inner_loop_compute_function(algorithm_key, A, B, C, inner_comm, inner_s
             set_c_override=set_c_tile_function,
             buffer_override=buffer,
             loopback=loopback,
+            skip_computation=skip_computation,
         )
 
         if config.make_inner_c_matrix:
@@ -1034,7 +1036,7 @@ class Gemm2D:
         self.outer_gemm1d = first
         self.inner_gemm1d = second
 
-    def setup_and_run(self, m, k, n, px, py):
+    def setup_and_run(self, m, k, n, px, py, skip_computation=False):
         comm, size, rank = mpi_setup()
 
         self.config.assert_divisibility(m, k, n, px, py, size)
@@ -1054,8 +1056,9 @@ class Gemm2D:
         B_local = self.config.distribution.B_distribution(B, px, py, rank, size, outer_comm, inner_comm)
         C_local = self.config.distribution.C_distribution(C, px, py, rank, size, outer_comm, inner_comm)
 
+        run_function = functools.partial(self.run, skip_computation=skip_computation)
         C_local, elapsed_time = call_algorithm(
-            self.run, comm, A_local, B_local, C_local,
+            run_function, comm, A_local, B_local, C_local,
             outer_comm, inner_comm, px, py
         )
 
@@ -1071,7 +1074,7 @@ class Gemm2D:
 
         return create_algorithm_output(elapsed_time, correct, A, B, C, expected, actual)
 
-    def run(self, A, B, C, outer_comm, inner_comm, px, py):
+    def run(self, A, B, C, outer_comm, inner_comm, px, py, skip_computation=False):
         outer_size = outer_comm.Get_size()
         outer_rank = outer_comm.Get_rank()
         inner_size = inner_comm.Get_size()
@@ -1083,6 +1086,7 @@ class Gemm2D:
             outer_size, px, py,
             self.inner_gemm1d.config,
             self.outer_gemm1d.config,
+            skip_computation=skip_computation,
         )
 
         outer_matrix_communicated = self.outer_gemm1d.config.matrix_communicated
@@ -1093,4 +1097,5 @@ class Gemm2D:
             compute_function=compute_function,
             current_tiles_override=outer_current_tiles,
             set_c_override=noop_set_c,
+            skip_computation=skip_computation,
         )

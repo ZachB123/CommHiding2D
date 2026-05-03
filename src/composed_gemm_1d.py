@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 
 from constants import MATRIX_DTYPE
@@ -182,7 +183,7 @@ class Gemm1D:
         
         self.config = Gemm1DConfig(matrix_communicated, subtile_scheme, communication_direction)
 
-    def setup_and_run(self, m, k, n, px, py):
+    def setup_and_run(self, m, k, n, px, py, skip_computation=False):
         comm, size, rank = mpi_setup()
 
         self.config.assert_divisibility(size, m, k ,n)
@@ -193,10 +194,11 @@ class Gemm1D:
         A_local = self.config.distribution.A_distribution(A, size, rank)
         B_local = self.config.distribution.B_distribution(B, size, rank)
         C_local = self.config.distribution.C_distribution(C, size, rank)
-    
+
         # print_full_matrices(A, B, C)
 
-        C_local, elapsed_time = call_algorithm(self.run, comm, A_local, B_local, C_local, comm, size, rank)
+        run_function = functools.partial(self.run, skip_computation=skip_computation)
+        C_local, elapsed_time = call_algorithm(run_function, comm, A_local, B_local, C_local, comm, size, rank)
 
         actual_tiles = comm.allgather((C_local, self.config.get_local_indices(rank)))
         actual = assemble_matrix_from_tiles(actual_tiles)
@@ -205,7 +207,7 @@ class Gemm1D:
 
         return create_algorithm_output(elapsed_time, correct, A, B, C, expected, actual)
 
-    def run(self, A, B, C, comm, size, rank, compute_function=None, current_tiles_override=None, set_c_override=None, buffer_override=None, loopback=False):
+    def run(self, A, B, C, comm, size, rank, compute_function=None, current_tiles_override=None, set_c_override=None, buffer_override=None, loopback=False, skip_computation=False):
         index = self.config.index(rank, size, self.config.direction_increment)
         loop_iterations = size
         buffer = buffer_override if buffer_override is not None else self.config.buffer(A, B, C)
@@ -222,17 +224,21 @@ class Gemm1D:
             A_curr = current_tiles.A_curr(A, B, C, buffer, index, size)
             B_curr = current_tiles.B_curr(A, B, C, buffer, index, size)
 
-            if compute_function is not None:
-                local_result = compute_function(A_curr, B_curr, i, index)
-            else:
-                local_result = np.matmul(A_curr, B_curr)
+            if not skip_computation:
+                if compute_function is not None:
+                    local_result = compute_function(A_curr, B_curr, i, index)
+                else:
+                    local_result = np.matmul(A_curr, B_curr)
 
             if self.config.matrix_communicated != MatrixCommunicated.C or i == 0:
                 C_curr = current_tiles.C_curr(A, B, C, buffer, index, size)
             else:
                 C_curr = receive([receive_request, send_request], buffer.on_receive())
 
-            C_tmp = local_result + C_curr
+            if skip_computation:
+                C_tmp = C_curr
+            else:
+                C_tmp = local_result + C_curr
 
             if self.config.matrix_communicated != MatrixCommunicated.C:
                 set_c(C, C_tmp, index, size)

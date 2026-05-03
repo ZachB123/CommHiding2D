@@ -55,3 +55,8 @@ class Gemm2DAlgorithmConfiguration:
     distribution: DistributionFunctions
     get_local_indices: Callable
     flatten_gather: bool = False
+
+@dataclass
+class BenchmarkAlgorithm:
+    name: str
+    run_function: Callable

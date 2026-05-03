@@ -8,3 +8,5 @@ deps.svg
 CLAUDE.md
 .claude/
 true_order.txt
+__pycache__/
+benchmarks/

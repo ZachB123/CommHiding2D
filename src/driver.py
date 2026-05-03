@@ -2,59 +2,32 @@ from mpi4py import MPI
 import numpy as np
 import argparse
 
-from constants import USE_REFACTORED_ALGORITHMS
 from debug import rank_print
 
-if USE_REFACTORED_ALGORITHMS:
-    from refactored_gemm import (
-        AG_A_COL_AG_A_ROW,
-        AG_A_COL_AG_B_COL,
-        AG_A_COL_AG_B_ROW,
-        AG_A_COL_RS_C_COL,
-        AG_A_COL_RS_C_ROW,
-        AG_A_ROW_AG_B_COL,
-        AG_A_ROW_AG_B_ROW,
-        AG_A_ROW_RS_C_COL,
-        AG_A_ROW_RS_C_ROW,
-        AG_B_COL_AG_B_ROW,
-        AG_B_COL_RS_C_COL,
-        AG_B_COL_RS_C_ROW,
-        AG_B_ROW_RS_C_COL,
-        AG_B_ROW_RS_C_ROW,
-        RS_C_COL_RS_C_ROW,
+from gemm import (
+    AG_A_COL_AG_A_ROW,
+    AG_A_COL_AG_B_COL,
+    AG_A_COL_AG_B_ROW,
+    AG_A_COL_RS_C_COL,
+    AG_A_COL_RS_C_ROW,
+    AG_A_ROW_AG_B_COL,
+    AG_A_ROW_AG_B_ROW,
+    AG_A_ROW_RS_C_COL,
+    AG_A_ROW_RS_C_ROW,
+    AG_B_COL_AG_B_ROW,
+    AG_B_COL_RS_C_COL,
+    AG_B_COL_RS_C_ROW,
+    AG_B_ROW_RS_C_COL,
+    AG_B_ROW_RS_C_ROW,
+    RS_C_COL_RS_C_ROW,
 
-        AG_A_COL,
-        AG_A_ROW,
-        AG_B_COL,
-        AG_B_ROW,
-        RS_C_COL,
-        RS_C_ROW
-    )
-else:
-    from gemm import (
-        AG_A_COL_AG_A_ROW,
-        AG_A_COL_AG_B_COL,
-        AG_A_COL_AG_B_ROW,
-        AG_A_COL_RS_C_COL,
-        AG_A_COL_RS_C_ROW,
-        AG_A_ROW_AG_B_COL,
-        AG_A_ROW_AG_B_ROW,
-        AG_A_ROW_RS_C_COL,
-        AG_A_ROW_RS_C_ROW,
-        AG_B_COL_AG_B_ROW,
-        AG_B_COL_RS_C_COL,
-        AG_B_COL_RS_C_ROW,
-        AG_B_ROW_RS_C_COL,
-        AG_B_ROW_RS_C_ROW,
-        RS_C_COL_RS_C_ROW,
-
-        AG_A_COL,
-        AG_A_ROW,
-        AG_B_COL,
-        AG_B_ROW,
-        RS_C_COL,
-        RS_C_ROW
-    )
+    AG_A_COL,
+    AG_A_ROW,
+    AG_B_COL,
+    AG_B_ROW,
+    RS_C_COL,
+    RS_C_ROW
+)
 
 
 gemm_algorithms = {

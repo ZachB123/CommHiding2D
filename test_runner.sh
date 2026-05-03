@@ -215,10 +215,10 @@ done
 
 # Build python command
 if [ -n "$ALGORITHM" ]; then
-    PYTHON_CMD="python tests.py -a $ALGORITHM"
+    PYTHON_CMD="python src/tests.py -a $ALGORITHM"
     echo "Running tests for algorithm: $ALGORITHM"
 else
-    PYTHON_CMD="python tests.py"
+    PYTHON_CMD="python src/tests.py"
     echo "Running all algorithm tests"
 fi
 
