@@ -17,12 +17,6 @@ from composed_gemm_2d import Gemm2D
 import gemm
 
 
-# =============================================================================
-# Dimension groups
-# Each group is a list of values; valid (m, k, n) combos are the Cartesian
-# product of the list with itself (itertools.product(group, repeat=3)).
-# =============================================================================
-
 SMALL_DIMENSIONS  = [1440, 2880, 4320, 7200]
 MEDIUM_DIMENSIONS = [4320, 7200, 10080, 14400]
 LARGE_DIMENSIONS  = [10080, 14400, 18720, 24480]
@@ -80,11 +74,6 @@ GEMM1D_NEXT_COMPOSED = [
 
 GEMM1D_ALL_COMPOSED = GEMM1D_PREV_COMPOSED + GEMM1D_NEXT_COMPOSED
 
-
-# =============================================================================
-# Composed 2D algorithm groups
-# Direction suffix in algorithm names is {inner_dir}_{outer_dir}.
-# =============================================================================
 
 GEMM2D_STANDARD_PREV_PREV_COMPOSED = [
     BenchmarkAlgorithm("AG_A_COL_AG_A_ROW_PREV_PREV_COMPOSED", Gemm2D(Gemm1D(MatrixCommunicated.A, SubtileScheme.COL, CommunicationDirection.SEND_PREV), Gemm1D(MatrixCommunicated.A, SubtileScheme.ROW, CommunicationDirection.SEND_PREV)).setup_and_run),
