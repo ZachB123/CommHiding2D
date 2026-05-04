@@ -5,7 +5,6 @@
 
 module load anaconda3
 
-PROJECT_ROOT=$SLURM_SUBMIT_DIR
 JOBS_DIR=$PROJECT_ROOT/jobs
 
 mkdir -p $JOBS_DIR/logs

@@ -1,7 +1,6 @@
 #!/bin/bash
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 PROJECT_ROOT=$(realpath "$SCRIPT_DIR/..")
-cd "$PROJECT_ROOT"
 
 TASK_COUNTS=(2 4 6 8 10 12 16 20 24 36 48 60 72 96 120)
 
@@ -28,7 +27,7 @@ for total_tasks in "${TASK_COUNTS[@]}"; do
         groups="${ALGO_VALUES[$i]}"
         job_name="bench_${total_tasks}t_${label}"
 
-        ALGO_GROUPS="$groups" sbatch \
+        PROJECT_ROOT="$PROJECT_ROOT" ALGO_GROUPS="$groups" sbatch \
             --nodes=$nodes \
             --ntasks-per-node=$ntasks_per_node \
             --job-name="$job_name" \
