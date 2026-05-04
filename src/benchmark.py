@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 
 import numpy as np
+from tqdm import tqdm
 
 from constants import BENCHMARK_FOLDER, MATRIX_DTYPE
 from data_classes import BenchmarkAlgorithm
@@ -331,7 +332,7 @@ ALL_ALGORITHMS_SKIP = (
 
 def warmup(comm):
     warmup_matrix = np.random.rand(4096, 4096).astype(MATRIX_DTYPE)
-    for _ in range(3):
+    for _ in range(10):
         np.matmul(warmup_matrix, warmup_matrix)
     del warmup_matrix
     gc.collect()
@@ -381,23 +382,30 @@ if __name__ == "__main__":
         writer = csv.DictWriter(csv_file, fieldnames=["algorithm", "m", "k", "n", "px", "py", "run_index", "elapsed_time", "correct", "timestamp"])
         writer.writeheader()
 
-    for px, py in grid_configurations:
-        for m, k, n in itertools.product(dimensions, repeat=3):
-            for algo in algorithms:
-                for run_index in range(args.runs):
-                    result = algo.run_function(m, k, n, px, py)
-                    if rank == 0:
-                        writer.writerow({
-                            "algorithm": algo.name,
-                            "m": m, "k": k, "n": n,
-                            "px": px, "py": py,
-                            "run_index": run_index,
-                            "elapsed_time": result["elapsed_time"],
-                            "correct": result["correct"],
-                            "timestamp": datetime.now().isoformat(),
-                        })
-                    del result
+    progress_output = open('/dev/tty', 'w') if rank == 0 else None
+    with tqdm(total=total_runs, disable=(rank != 0), file=progress_output) as progress_bar:
+        for px, py in grid_configurations:
+            for m, k, n in itertools.product(dimensions, repeat=3):
+                for algo in algorithms:
+                    for run_index in range(args.runs):
+                        progress_bar.set_description(algo.name)
+                        result = algo.run_function(m, k, n, px, py)
+                        if rank == 0:
+                            writer.writerow({
+                                "algorithm": algo.name,
+                                "m": m, "k": k, "n": n,
+                                "px": px, "py": py,
+                                "run_index": run_index,
+                                "elapsed_time": result["elapsed_time"],
+                                "correct": result["correct"],
+                                "timestamp": datetime.now().isoformat(),
+                            })
+                        del result
+                        progress_bar.update(1)
                     gc.collect()
+
+    if progress_output is not None:
+        progress_output.close()
 
     if rank == 0:
         csv_file.close()
