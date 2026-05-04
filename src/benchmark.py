@@ -343,6 +343,9 @@ if __name__ == "__main__":
     comm, size, rank = mpi_setup()
     warmup(comm)
 
+    nodes = int(os.environ.get("SLURM_NNODES", 1))
+    ntasks_per_node = size // nodes
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--algos", nargs="+", required=True)
     parser.add_argument("--dimensions", required=True, choices=["SMALL", "MEDIUM", "LARGE"])
@@ -379,10 +382,13 @@ if __name__ == "__main__":
         next_id = max(existing_ids, default=0) + 1
         output_path = BENCHMARK_FOLDER / f"benchmark_{next_id:03d}.csv"
         csv_file = open(output_path, "w", newline="")
-        writer = csv.DictWriter(csv_file, fieldnames=["algorithm", "m", "k", "n", "px", "py", "run_index", "elapsed_time", "correct", "timestamp"])
+        writer = csv.DictWriter(csv_file, fieldnames=["algorithm", "m", "k", "n", "px", "py", "run_index", "elapsed_time", "correct", "timestamp", "world_size", "nodes", "ntasks_per_node"])
         writer.writeheader()
 
-    progress_output = open('/dev/tty', 'w') if rank == 0 else None
+    try:
+        progress_output = open('/dev/tty', 'w') if rank == 0 else None
+    except OSError:
+        progress_output = sys.stderr if rank == 0 else None
     with tqdm(total=total_runs, disable=(rank != 0), file=progress_output) as progress_bar:
         for px, py in grid_configurations:
             for m, k, n in itertools.product(dimensions, repeat=3):
@@ -399,6 +405,9 @@ if __name__ == "__main__":
                                 "elapsed_time": result["elapsed_time"],
                                 "correct": result["correct"],
                                 "timestamp": datetime.now().isoformat(),
+                                "world_size": size,
+                                "nodes": nodes,
+                                "ntasks_per_node": ntasks_per_node,
                             })
                         del result
                         progress_bar.update(1)
