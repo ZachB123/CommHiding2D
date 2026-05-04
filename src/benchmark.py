@@ -388,7 +388,7 @@ if __name__ == "__main__":
     try:
         progress_output = open('/dev/tty', 'w') if rank == 0 else None
     except OSError:
-        progress_output = sys.stderr if rank == 0 else None
+        progress_output = sys.stdout if rank == 0 else None
     with tqdm(total=total_runs, disable=(rank != 0), file=progress_output) as progress_bar:
         for px, py in grid_configurations:
             for m, k, n in itertools.product(dimensions, repeat=3):
