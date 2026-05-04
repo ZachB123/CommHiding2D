@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -A qts-rvuduc3
-#SBATCH --partition=inferno
+#SBATCH -A gts-rvuduc3
+#SBATCH -q inferno
 #SBATCH --job-name=2d_comm_hiding_test
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=4

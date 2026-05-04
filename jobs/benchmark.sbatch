@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -A qts-rvuduc3
-#SBATCH --partition=inferno
+#SBATCH -A gts-rvuduc3
+#SBATCH -q inferno
 #SBATCH --time=24:00:00
 
 module load anaconda3
