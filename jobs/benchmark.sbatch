@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH -A qts-rvuduc3
+#SBATCH --partition=inferno
+#SBATCH --time=24:00:00
+
+module load anaconda3
+
+JOBS_DIR=$(dirname "$(realpath "$0")")
+PROJECT_ROOT=$JOBS_DIR/..
+
+mkdir -p $JOBS_DIR/logs
+pip install -r $PROJECT_ROOT/requirements.txt
+
+cd $PROJECT_ROOT/src
+
+srun python benchmark.py \
+    --algos $ALGO_GROUPS \
+    --dimensions ${DIMENSIONS:-LARGE} \
+    --runs ${RUNS:-3}
