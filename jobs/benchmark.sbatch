@@ -2,6 +2,7 @@
 #SBATCH -A gts-rvuduc3
 #SBATCH -q inferno
 #SBATCH --time=24:00:00
+#SBATCH --mem=0
 
 module load anaconda3
 
@@ -14,5 +15,5 @@ cd $PROJECT_ROOT/src
 
 srun python benchmark.py \
     --algos $ALGO_GROUPS \
-    --dimensions ${DIMENSIONS:-LARGE} \
+    --dimensions ${DIMENSIONS:-MEDIUM} \
     --runs ${RUNS:-3}

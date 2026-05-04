@@ -5,6 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=4
 #SBATCH --time=01:00:00
+#SBATCH --mem=0
 #SBATCH --output=jobs/logs/%j.out
 #SBATCH --error=jobs/logs/%j.err
 
