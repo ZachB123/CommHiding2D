@@ -1,5 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
+PROJECT_ROOT=$(realpath "$SCRIPT_DIR/..")
+cd "$PROJECT_ROOT"
 
 TASK_COUNTS=(2 4 6 8 10 12 16 20 24 36 48 60 72 96 120)
 

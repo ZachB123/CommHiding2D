@@ -5,8 +5,8 @@
 
 module load anaconda3
 
-JOBS_DIR=$(dirname "$(realpath "$0")")
-PROJECT_ROOT=$JOBS_DIR/..
+PROJECT_ROOT=$SLURM_SUBMIT_DIR
+JOBS_DIR=$PROJECT_ROOT/jobs
 
 mkdir -p $JOBS_DIR/logs
 pip install -r $PROJECT_ROOT/requirements.txt
